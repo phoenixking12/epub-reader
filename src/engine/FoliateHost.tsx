@@ -54,6 +54,8 @@ export interface ParagraphTapInfo {
 export interface FoliateHandle {
   goLeft: () => void
   goRight: () => void
+  goPrevSection: () => void
+  goNextSection: () => void
   goTo: (target: string | number) => Promise<void>
   goToFraction: (n: number) => Promise<void>
   applySettings: (settings: DisplaySettings) => void
@@ -433,6 +435,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (hit?.closest('a, img, video, audio, button, .lg-pmark, .lg-sel-handle')) {
       return
     }
+    if (savedRanges.current.has(doc) || doc.querySelector('.lg-sel-handle')) {
+      clearHandles(doc)
+      doc.getSelection()?.removeAllRanges()
+      onSelectionRef.current(null)
+      viewRef.current?.deselect()
+      return
+    }
     const existing = hitAnnotation(doc, clientX, clientY)
     const now = Date.now()
     const prev = tapRef.current
@@ -483,9 +492,25 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   }
 
   const emitDocSelection = (doc: Document, overlayCfi?: string, keepNative = false) => {
+    let sel = doc.getSelection()
+    if (!sel?.rangeCount || sel.isCollapsed) {
+      const saved = savedRanges.current.get(doc)
+      if (saved) {
+        try {
+          hidingNative.current.add(doc)
+          sel?.removeAllRanges()
+          sel?.addRange(saved.cloneRange())
+        } catch {
+          /* detached */
+        }
+        window.setTimeout(() => hidingNative.current.delete(doc), 0)
+        sel = doc.getSelection()
+      }
+    }
     const info = selectionFromDoc(doc, overlayCfi)
-    const sel = doc.getSelection()
+    sel = doc.getSelection()
     if (!info || !sel?.rangeCount) {
+      if (savedRanges.current.has(doc) && doc.querySelector('.lg-sel-handle')) return
       clearHandles(doc)
       onSelectionRef.current(null)
       return
@@ -634,9 +659,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const dx = t.clientX - state.x
         const dy = t.clientY - state.y
         const mode = settingsRef.current.pageTurnMode
-        if (mode === 'swipe' && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        const sideways = Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4
+        if (sideways && (mode === 'swipe' || mode === 'scroll')) {
           e.stopPropagation()
-          if (dx < 0) void viewRef.current?.goRight()
+          if (mode === 'scroll') {
+            if (dx < 0) viewRef.current?.renderer?.nextSection?.()
+            else viewRef.current?.renderer?.prevSection?.()
+          } else if (dx < 0) void viewRef.current?.goRight()
           else void viewRef.current?.goLeft()
           return
         }
@@ -650,9 +679,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
-    doc.addEventListener('mouseup', () => {
-      window.setTimeout(() => emitDocSelection(doc), 0)
-    })
     doc.addEventListener('click', (ev) => {
       if (state.fromTouch) {
         state.fromTouch = false
@@ -716,6 +742,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   useImperativeHandle(ref, () => ({
     goLeft: () => void viewRef.current?.goLeft(),
     goRight: () => void viewRef.current?.goRight(),
+    goPrevSection: () => void viewRef.current?.renderer?.prevSection?.(),
+    goNextSection: () => void viewRef.current?.renderer?.nextSection?.(),
     goTo: async (target) => {
       await viewRef.current?.goTo(target)
     },

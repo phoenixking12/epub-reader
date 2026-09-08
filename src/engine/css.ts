@@ -61,7 +61,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     html.lg-show-marks h6,
     html.lg-show-marks li,
     html.lg-show-marks blockquote {
-      padding-inline-start: 1.85em !important;
       overflow: visible !important;
     }
     ::highlight(lg-sel) {
@@ -70,10 +69,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     }
     .lg-pmark {
       position: absolute;
-      left: 2px;
-      top: 0.2em;
-      width: 18px;
-      height: 18px;
+      left: 0;
+      top: 0.15em;
+      width: 16px;
+      height: 16px;
+      transform: translateX(-2px);
       border: 0;
       padding: 0;
       border-radius: 50%;

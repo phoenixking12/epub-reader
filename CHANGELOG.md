@@ -2,6 +2,18 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.0.2 — 2026-09-09
+
+### Added
+
+- In Scroll mode, a sideways swipe turns the chapter while vertical scrolling still moves the lines
+
+### Fixed
+
+- Hamburger and overflow stay on-screen; status bar no longer covers them
+- Long-press keeps the word selected until you tap elsewhere
+- Extra left gutter from system-bar padding and the old 24px margin
+
 ## 3.0.1 — 2026-09-09
 
 ### Fixed

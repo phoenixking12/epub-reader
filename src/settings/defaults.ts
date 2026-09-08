@@ -17,7 +17,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   fontFamily: '"Source Serif 4", Georgia, serif',
   fontSize: 18,
   lineHeight: 1.55,
-  margin: 24,
+  margin: 8,
   maxInlineSize: 720,
   gap: 7,
   justify: true,
@@ -88,8 +88,10 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   const merged = { ...DEFAULT_DISPLAY, ...display }
   const pageTurnMode: PageTurnMode =
     display?.pageTurnMode ?? (display?.flow === 'scrolled' ? 'scroll' : DEFAULT_DISPLAY.pageTurnMode)
+  const margin = display?.margin === 24 || display?.margin == null ? 8 : merged.margin
   return {
     ...merged,
+    margin,
     pageTurnMode,
     flow: flowForPageTurn(pageTurnMode),
     customHighlightColors: merged.customHighlightColors ?? [],

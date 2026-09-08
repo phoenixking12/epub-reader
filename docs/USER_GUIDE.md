@@ -32,7 +32,7 @@ In **Menu → Display → Turn pages**:
 | Swipe | Swipe left or right |
 | Buttons | On-screen ‹ › |
 | Volume | Volume up = previous, volume down = next (Android) |
-| Scroll | Scroll through the chapter |
+| Scroll | Scroll through the chapter; swipe sideways to change chapter |
 
 ## Bookmarks
 
@@ -59,8 +59,10 @@ In **Menu → Display → Turn pages**:
 | Double-tap | Show or hide Library and Menu |
 | Single-tap a paragraph | Show bookmark dots |
 | Single-tap a highlight | Select the whole mark |
+| Tap away from a selection | Drop the selection |
 | Swipe (in Swipe mode) | Turn the page |
-| Long-press then drag handles | Select text |
+| Swipe sideways (in Scroll mode) | Previous / next chapter |
+| Long-press then drag handles | Select text; stays selected until you tap away |
 | Pinch | Change type size |
 
 ## Backup

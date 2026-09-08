@@ -150,6 +150,8 @@ interface FoliateRenderer extends HTMLElement {
   setStyles?(styles: string | [string, string]): void
   prev(distance?: number): Promise<void>
   next(distance?: number): Promise<void>
+  prevSection?(): unknown
+  nextSection?(): unknown
   goTo(resolved: unknown): Promise<void>
   getContents(): Array<{ index: number; doc: Document; overlayer?: unknown }>
   destroy(): void

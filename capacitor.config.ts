@@ -9,10 +9,12 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
+    adjustMarginsForEdgeToEdge: 'disable',
   },
   plugins: {
     StatusBar: {
       style: 'DARK',
+      overlaysWebView: false,
     },
     Keyboard: {
       resize: 'body',

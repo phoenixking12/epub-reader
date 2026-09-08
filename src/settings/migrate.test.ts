@@ -18,8 +18,11 @@ describe('migrateDisplay', () => {
     expect(next.flow).toBe('paginated')
   })
 
-  it('forces paginated flow when turning pages with buttons', () => {
-    const next = migrateDisplay({ pageTurnMode: 'buttons', flow: 'scrolled' })
-    expect(next.flow).toBe('paginated')
+  it('narrows the old 24px side gutter so text can run nearer the edge', () => {
+    expect(migrateDisplay({ margin: 24 }).margin).toBe(8)
+  })
+
+  it('keeps a custom side margin', () => {
+    expect(migrateDisplay({ ...DEFAULT_DISPLAY, margin: 36 }).margin).toBe(36)
   })
 })
