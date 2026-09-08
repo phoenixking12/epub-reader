@@ -4,11 +4,14 @@ export type AnnotationStyle =
   | 'strike'
   | 'squiggly'
   | 'bold'
+  | 'italic'
   | 'textColor'
 
 export type BookmarkKind = 'position' | 'selection' | 'paragraph' | 'chapter'
 
 export type ReaderFlow = 'paginated' | 'scrolled'
+
+export type PageTurnMode = 'swipe' | 'buttons' | 'volume' | 'scroll'
 
 export type ThemeId = 'day' | 'sepia' | 'night' | 'custom'
 
@@ -36,6 +39,7 @@ export interface DisplaySettings {
   justify: boolean
   hyphenate: boolean
   flow: ReaderFlow
+  pageTurnMode: PageTurnMode
   brightness: number
   brightnessMode: 'auto' | 'manual'
   customHighlightColors: string[]

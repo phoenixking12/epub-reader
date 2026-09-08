@@ -13,6 +13,7 @@ interface Props {
   annotations: AnnotationRecord[]
   onTab: (tab: DrawerTab) => void
   onClose: () => void
+  onLibrary?: () => void
   onGoTo: (target: string) => void
   onRenameBookmark: (id: string, title: string) => void
   onDeleteBookmark: (id: string) => void
@@ -41,6 +42,7 @@ function styleLabel(style: AnnotationRecord['style']) {
   if (style === 'strike') return 'Strike'
   if (style === 'squiggly') return 'Squiggle'
   if (style === 'bold') return 'Bold'
+  if (style === 'italic') return 'Italic'
   if (style === 'textColor') return 'Color'
   return 'Highlight'
 }
@@ -61,35 +63,26 @@ export function Drawer({
   annotations,
   onTab,
   onClose,
+  onLibrary,
   onGoTo,
   onRenameBookmark,
   onDeleteBookmark,
   onDeleteAnnotation,
   onEditNote,
 }: Props) {
-  const [colorFilter, setColorFilter] = useState<string | 'all'>('all')
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const colors = useMemo(() => [...new Set(annotations.map((a) => a.color))], [annotations])
   const notes = useMemo(
-    () =>
-      annotations
-        .filter((a) => colorFilter === 'all' || a.color === colorFilter)
-        .slice()
-        .sort((a, b) => b.createdAt - a.createdAt),
-    [annotations, colorFilter],
+    () => annotations.filter((a) => a.note.trim()).sort((a, b) => b.createdAt - a.createdAt),
+    [annotations],
   )
-  const paragraphMarks = bookmarks.filter((b) => b.kind === 'paragraph' || b.kind === 'selection')
-  const placeMarks = bookmarks.filter((b) => b.kind !== 'paragraph' && b.kind !== 'selection')
-  const orderedMarks = [...paragraphMarks, ...placeMarks].length
-    ? [...bookmarks].sort((a, b) => b.createdAt - a.createdAt)
-    : bookmarks
+  const orderedMarks = useMemo(
+    () => [...bookmarks].sort((a, b) => b.createdAt - a.createdAt),
+    [bookmarks],
+  )
 
   useEffect(() => {
-    if (!open) {
-      setEditing(null)
-      setColorFilter('all')
-    }
+    if (!open) setEditing(null)
   }, [open])
 
   if (!open) return null
@@ -99,6 +92,11 @@ export function Drawer({
       <button className="drawer-scrim" aria-label="Close" onClick={onClose} />
       <aside className="drawer" role="dialog" aria-label={heading}>
         <header className="drawer-head">
+          {mode === 'nav' && onLibrary ? (
+            <button className="icon-btn" onClick={onLibrary}>
+              Library
+            </button>
+          ) : null}
           <h2>{heading}</h2>
           <button className="icon-btn" onClick={onClose}>
             Close
@@ -119,7 +117,7 @@ export function Drawer({
         {mode === 'nav' && tab === 'marks' && (
           <ul className="list">
             {orderedMarks.length === 0 && (
-              <li className="muted empty-hint">Tap a paragraph, then Bookmark, and give it a name.</li>
+              <li className="muted empty-hint">Tap a paragraph bookmark icon, then give it a name.</li>
             )}
             {orderedMarks.map((b) => (
               <li key={b.id} className="mark-row">
@@ -165,49 +163,31 @@ export function Drawer({
           </ul>
         )}
         {mode === 'notes' && (
-          <>
-            {colors.length > 1 && (
-              <div className="color-row compact">
-                <button className={`chip ${colorFilter === 'all' ? 'active' : ''}`} onClick={() => setColorFilter('all')}>
-                  All
-                </button>
-                {colors.map((c) => (
-                  <button
-                    key={c}
-                    className={`swatch ${colorFilter === c ? 'active' : ''}`}
-                    style={{ background: c }}
-                    onClick={() => setColorFilter(c)}
-                    aria-label={`Filter ${c}`}
-                  />
-                ))}
-              </div>
+          <ul className="list">
+            {notes.length === 0 && (
+              <li className="muted empty-hint">Long-press, then Note. Only notes you write appear here.</li>
             )}
-            <ul className="list">
-              {notes.length === 0 && (
-                <li className="muted empty-hint">Long-press a word, then tap a color to highlight it.</li>
-              )}
-              {notes.map((a) => (
-                <li key={a.id} className="mark-row">
-                  <button className="toc-item highlight-item" onClick={() => onGoTo(a.cfiRange)}>
-                    <i className="hl-bar" style={{ background: a.color }} />
-                    <span>
-                      <span className="hl-kind">{styleLabel(a.style)}</span>
-                      <span className="quote">{a.quote}</span>
-                      {a.note ? <em className="note-preview">{a.note}</em> : null}
-                    </span>
+            {notes.map((a) => (
+              <li key={a.id} className="mark-row">
+                <button className="toc-item highlight-item" onClick={() => onGoTo(a.cfiRange)}>
+                  <i className="hl-bar" style={{ background: a.color }} />
+                  <span>
+                    <span className="hl-kind">{styleLabel(a.style)}</span>
+                    <span className="quote">{a.quote}</span>
+                    <em className="note-preview">{a.note}</em>
+                  </span>
+                </button>
+                <div className="row-actions">
+                  <button className="text-btn" onClick={() => onEditNote(a)}>
+                    Edit
                   </button>
-                  <div className="row-actions">
-                    <button className="text-btn" onClick={() => onEditNote(a)}>
-                      {a.note ? 'Edit' : 'Note'}
-                    </button>
-                    <button className="text-btn danger" onClick={() => onDeleteAnnotation(a.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </>
+                  <button className="text-btn danger" onClick={() => onDeleteAnnotation(a.id)}>
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </aside>
     </div>

@@ -42,6 +42,42 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     * {
       -webkit-touch-callout: none !important;
     }
+    p, h1, h2, h3, h4, h5, h6, li, blockquote {
+      position: relative;
+    }
+    html.lg-show-marks body {
+      padding-inline-start: 1.6em;
+    }
+    .lg-pmark {
+      position: absolute;
+      left: 0;
+      top: 0.15em;
+      width: 22px;
+      height: 22px;
+      transform: translateX(calc(-100% - 6px));
+      border: 0;
+      padding: 0;
+      border-radius: 50%;
+      background: color-mix(in srgb, ${fg} 18%, transparent);
+      box-shadow: inset 0 0 0 1.5px ${link};
+      cursor: pointer;
+      z-index: 3;
+    }
+    .lg-pmark.on {
+      background: ${link};
+    }
+    .lg-sel-handle {
+      position: fixed;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #ea580c;
+      border: 3px solid #fff7ed;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      z-index: 50;
+      touch-action: none;
+      pointer-events: auto;
+    }
     p, li, blockquote, dd, div, section, article, aside, td, th, span {
       font-size: inherit !important;
     }

@@ -1,4 +1,4 @@
-name: Android APK
+name: LoreGuard APK
 
 on:
   push:
@@ -45,13 +45,16 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
+      - name: Name APK
+        run: cp android/app/build/outputs/apk/debug/*.apk LoreGuard.apk
       - uses: actions/upload-artifact@v5
         with:
-          name: loreguard-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: LoreGuard
+          path: LoreGuard.apk
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/debug/*.apk
+          name: LoreGuard ${{ github.ref_name }}
+          files: LoreGuard.apk
           generate_release_notes: true

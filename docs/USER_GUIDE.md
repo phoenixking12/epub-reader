@@ -10,53 +10,56 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 
 ## Reading chrome
 
-Tap the middle of a page (not on a paragraph) to show or hide the bars.
+Tap the page to show or hide the bar.
 
-The top bar has:
+You get **two** icon buttons and the title in the middle:
 
-- **Library** — back to your books
-- **Title** — book name and place in the chapter
-- **Notes** — highlights and attached notes
-- **Contents** — table of contents and bookmarks
-- **Menu** — find in book, reading look, bookmark this page, listen (if the book has media overlay)
+- **☰** — contents, bookmarks, and Library
+- **⋮** — Notes, Text, Display, Color, find, bookmark this page
 
-The bottom bar turns pages and scrubs through the book.
+If **Display → Buttons** is on, previous/next page buttons appear as well (**four** buttons total).
 
-Left and right edges still turn the page.
+## Turn pages
 
-## Bookmarks (paragraphs)
+In **Menu → Display → Turn pages**:
 
-1. Tap a paragraph (not the page edge).
-2. Tap **Bookmark** next to it.
-3. Give it a name. The paragraph text is stored as a quote.
-4. Open **Contents → Bookmarks** to jump, rename, or remove.
+| Mode | How pages move |
+| --- | --- |
+| Swipe | Swipe left or right |
+| Buttons | On-screen ‹ › |
+| Volume | Volume up = previous, volume down = next (Android) |
+| Scroll | Scroll through the chapter |
 
-**Bookmark this page** in Menu saves the current place instead of a paragraph.
+## Bookmarks
+
+When the bar is visible, a bookmark dot sits beside each paragraph. Tap it, name the bookmark, and find it under **Library → Bookmarks**.
+
+**Bookmark this page** in Menu saves the current place.
 
 ## Highlights and notes
 
-1. Long-press a word, then drag to extend the selection.
-2. Use the in-app bar only (the Android copy popup is turned off).
-3. Tap a color to highlight. Colors you pick on the wheel appear under **Custom** the next time you select text, and in Reading / Settings.
-4. **Note** attaches text to that highlight. **Notes** in the title bar lists them.
+1. Long-press a word, then drag the orange handles to set the start and end.
+2. The tool panel appears **under** the selection.
+3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once. The tool panel sits above the selection.
+4. **Note** attaches text. **Menu → Notes** lists only notes you wrote, with the quoted place — not every highlight.
 
 ## Brightness
 
-In **Menu → Reading → Look**:
-
-- **Auto** follows the phone’s brightness (notification shade, auto-brightness, dark room).
-- **Manual** sets a level for LoreGuard only.
+**Menu → Display**: Auto follows the phone; Manual sets a level for LoreGuard only.
 
 ## Gestures
 
 | Gesture | Result |
 | --- | --- |
-| Tap left / right edge | Previous / next page |
-| Tap a paragraph | Bookmark chip |
-| Tap empty middle | Show or hide bars |
-| Long-press then drag | Select text |
+| Tap | Show or hide Library and Menu |
+| Swipe (in Swipe mode) | Turn the page |
+| Long-press then drag handles | Select text |
 | Pinch | Change type size |
 
 ## Backup
 
 Settings → Backup exports highlights, notes, and bookmarks as JSON. EPUB files stay on the device; export does not include the books themselves.
+
+## Updates
+
+Installs from GitHub use the same Android id (`com.epubreader.app`). A newer **versionCode** replaces the previous LoreGuard on the phone and keeps your library.

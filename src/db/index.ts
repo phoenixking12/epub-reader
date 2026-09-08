@@ -7,7 +7,7 @@ import type {
   FontRecord,
   SettingsRecord,
 } from '../types/models'
-import { DEFAULT_SETTINGS } from '../settings/defaults'
+import { DEFAULT_SETTINGS, migrateDisplay } from '../settings/defaults'
 
 export class ReaderDB extends Dexie {
   books!: Table<BookRecord, string>
@@ -38,7 +38,7 @@ export async function getSettings(): Promise<SettingsRecord> {
     return {
       ...DEFAULT_SETTINGS,
       ...row,
-      display: { ...DEFAULT_SETTINGS.display, ...row.display },
+      display: migrateDisplay(row.display),
     }
   }
   await db.settings.put(DEFAULT_SETTINGS)
@@ -50,7 +50,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<Sett
   const next: SettingsRecord = {
     ...current,
     ...patch,
-    display: { ...current.display, ...(patch.display ?? {}) },
+    display: migrateDisplay({ ...current.display, ...(patch.display ?? {}) }),
     id: 'global',
   }
   await db.settings.put(next)
@@ -62,6 +62,6 @@ export function withSettingsDefaults(row?: SettingsRecord | null): SettingsRecor
   return {
     ...DEFAULT_SETTINGS,
     ...row,
-    display: { ...DEFAULT_SETTINGS.display, ...row.display },
+    display: migrateDisplay(row.display),
   }
 }

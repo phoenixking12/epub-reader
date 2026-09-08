@@ -7,13 +7,14 @@ import {
 import { View } from 'foliate-js/view.js'
 import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
-import type { AnnotationRecord, DisplaySettings } from '../types/models'
+import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 
 export interface SelectionInfo {
   cfi: string
   text: string
   index: number
+  rect: { left: number; top: number; right: number; bottom: number }
 }
 
 export interface ImageInfo {
@@ -65,6 +66,8 @@ interface Props {
   lastLocation?: string
   settings: DisplaySettings
   annotations: AnnotationRecord[]
+  bookmarks?: Array<Pick<BookmarkRecord, 'cfi' | 'quote' | 'kind'>>
+  showParagraphMarks?: boolean
   onRelocate: (info: RelocateInfo) => void
   onSelection: (sel: SelectionInfo | null) => void
   onShowAnnotation: (cfi: string) => void
@@ -87,7 +90,7 @@ function drawAnnotation(
 }
 
 function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
-  if (rec.style !== 'textColor' && rec.style !== 'bold') return
+  if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') return
   if (typeof Highlight !== 'function' || !CSS.highlights) return
   const name = `ann-${rec.id}`
   CSS.highlights.set(name, new Highlight(range))
@@ -104,7 +107,9 @@ function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) 
       ? `color: ${rec.color};`
       : rec.style === 'bold'
         ? `font-weight: 700; text-shadow: 0.3px 0 0 currentColor;`
-        : ''
+        : rec.style === 'italic'
+          ? `font-style: italic;`
+          : ''
   if (extra) {
     styleEl.textContent += `::highlight(${name}) { ${extra} }\n`
   }
@@ -116,6 +121,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     lastLocation,
     settings,
     annotations,
+    bookmarks = [],
+    showParagraphMarks = false,
     onRelocate,
     onSelection,
     onShowAnnotation,
@@ -132,6 +139,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const viewRef = useRef<View | null>(null)
   const settingsRef = useRef(settings)
   const annotationsRef = useRef(annotations)
+  const bookmarksRef = useRef(bookmarks)
+  const showMarksRef = useRef(showParagraphMarks)
   const pinchRef = useRef({ active: false, startDist: 0, startSize: 18, lastSize: 18, lastAt: 0 })
   const badgeRef = useRef<HTMLDivElement>(null)
   const pinchDocs = useRef(new WeakSet<Document>())
@@ -148,6 +157,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
   settingsRef.current = settings
   annotationsRef.current = annotations
+  bookmarksRef.current = bookmarks
+  showMarksRef.current = showParagraphMarks
   onRelocateRef.current = onRelocate
   onSelectionRef.current = onSelection
   onShowAnnotationRef.current = onShowAnnotation
@@ -254,23 +265,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
-  const paragraphFromPoint = (doc: Document, x: number, y: number) => {
-    const el = doc.elementFromPoint(x, y)
-    if (!el) return null
-    if (el.closest('a, img, svg, video, audio, button')) return null
-    const block = el.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption, th, td')
-    if (!(block instanceof HTMLElement)) return null
-    const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
-    if (!quote) return null
-    const range = doc.createRange()
-    try {
-      range.selectNodeContents(block)
-    } catch {
-      return null
-    }
-    return { quote, range, block }
-  }
-
   const toViewport = (doc: Document, x: number, y: number) => {
     const frame = doc.defaultView?.frameElement
     if (frame instanceof HTMLElement) {
@@ -280,31 +274,92 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     return { x, y }
   }
 
-  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
+  const rangeBox = (range: Range) => {
+    const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0)
+    if (!rects.length) {
+      const b = range.getBoundingClientRect()
+      return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, start: b, end: b }
+    }
+    return {
+      left: Math.min(...rects.map((r) => r.left)),
+      top: Math.min(...rects.map((r) => r.top)),
+      right: Math.max(...rects.map((r) => r.right)),
+      bottom: Math.max(...rects.map((r) => r.bottom)),
+      start: rects[0],
+      end: rects[rects.length - 1],
+    }
+  }
+
+  const selectionFromDoc = (doc: Document): SelectionInfo | null => {
     const view = viewRef.current
+    if (!view) return null
+    const sel = doc.getSelection()
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return null
+    const range = sel.getRangeAt(0)
+    const text = sel.toString().trim()
+    if (!text) return null
+    const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
+    const box = rangeBox(range)
+    const origin = toViewport(doc, 0, 0)
+    return {
+      cfi: view.getCFI(index, range),
+      text,
+      index,
+      rect: {
+        left: origin.x + box.left,
+        top: origin.y + box.top,
+        right: origin.x + box.right,
+        bottom: origin.y + box.bottom,
+      },
+    }
+  }
+
+  const clearHandles = (doc: Document) => {
+    doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
+  }
+
+  const paintParagraphMarks = () => {
+    const view = viewRef.current
+    if (!view?.renderer) return
+    for (const { doc, index } of view.renderer.getContents()) {
+      if (!doc) continue
+      doc.documentElement.classList.toggle('lg-show-marks', showMarksRef.current)
+      doc.querySelectorAll('.lg-pmark').forEach((n) => n.remove())
+      if (!showMarksRef.current) continue
+      const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+      for (const block of nodes) {
+        if (!(block instanceof HTMLElement)) continue
+        const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
+        if (quote.length < 2) continue
+        const range = doc.createRange()
+        try {
+          range.selectNodeContents(block)
+        } catch {
+          continue
+        }
+        const cfi = view.getCFI(index, range)
+        const on = bookmarksRef.current.some(
+          (b) => b.cfi === cfi || (b.kind === 'paragraph' && b.quote === quote),
+        )
+        const btn = doc.createElement('button')
+        btn.type = 'button'
+        btn.className = `lg-pmark${on ? ' on' : ''}`
+        btn.setAttribute('aria-label', on ? 'Edit bookmark' : 'Bookmark paragraph')
+        btn.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const r = btn.getBoundingClientRect()
+          const vp = toViewport(doc, r.left, r.top)
+          onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
+        })
+        block.prepend(btn)
+      }
+    }
+  }
+
+  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
     const hit = doc.elementFromPoint(clientX, clientY)
-    if (hit?.closest('a, img, svg, video, audio, button')) {
-      onParagraphTapRef.current(null)
-      return
-    }
-    const width = doc.defaultView?.innerWidth || 1
-    const ratio = clientX / width
-    if (ratio <= 0.2) {
-      onParagraphTapRef.current(null)
-      void view?.goLeft()
-      return
-    }
-    if (ratio >= 0.8) {
-      onParagraphTapRef.current(null)
-      void view?.goRight()
-      return
-    }
-    const para = paragraphFromPoint(doc, clientX, clientY)
-    if (para && view) {
-      const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
-      const cfi = view.getCFI(index, para.range)
-      const point = toViewport(doc, clientX, clientY)
-      onParagraphTapRef.current({ cfi, quote: para.quote, x: point.x, y: point.y })
+    if (hit?.closest('a, img, svg, video, audio, button, .lg-pmark, .lg-sel-handle')) {
       return
     }
     onParagraphTapRef.current(null)
@@ -316,43 +371,96 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   }
 
   const emitDocSelection = (doc: Document) => {
-    const view = viewRef.current
-    if (!view) return
+    const info = selectionFromDoc(doc)
     const sel = doc.getSelection()
-    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+    if (!info || !sel?.rangeCount) {
+      clearHandles(doc)
       onSelectionRef.current(null)
       return
     }
     const range = sel.getRangeAt(0)
-    const text = sel.toString().trim()
-    if (!text) {
-      onSelectionRef.current(null)
-      return
+    const box = rangeBox(range)
+    const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
+      let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
+      if (!el) {
+        el = doc.createElement('div')
+        el.className = 'lg-sel-handle'
+        el.dataset.edge = edge
+        doc.body.append(el)
+      }
+      el.style.left = `${x - 18}px`
+      el.style.top = `${y - 10}px`
     }
-    const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
-    onSelectionRef.current({ cfi: view.getCFI(index, range), text, index })
+    placeHandle('start', box.start.left, box.start.bottom)
+    placeHandle('end', box.end.right, box.end.bottom)
+    onSelectionRef.current(info)
   }
 
   const bindTextSelection = (doc: Document) => {
     if (selectDocs.current.has(doc)) return
     selectDocs.current.add(doc)
     suppressNativeUi(doc)
-    const state = { timer: 0, x: 0, y: 0, t: 0, selecting: false, fromTouch: false }
+    const state: {
+      timer: number
+      x: number
+      y: number
+      t: number
+      selecting: boolean
+      fromTouch: boolean
+      handle: 'start' | 'end' | null
+      anchorNode: Node | null
+      anchorOffset: number
+    } = {
+      timer: 0,
+      x: 0,
+      y: 0,
+      t: 0,
+      selecting: false,
+      fromTouch: false,
+      handle: null,
+      anchorNode: null,
+      anchorOffset: 0,
+    }
     doc.addEventListener(
       'touchstart',
       (e) => {
         if (e.touches.length !== 1) {
           window.clearTimeout(state.timer)
           state.selecting = false
+          state.handle = null
           return
         }
         const t = e.touches[0]
+        const target = e.target as HTMLElement | null
         state.x = t.clientX
         state.y = t.clientY
         state.t = Date.now()
-        state.selecting = false
         state.fromTouch = true
         window.clearTimeout(state.timer)
+        const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
+        if (handleEl) {
+          e.preventDefault()
+          e.stopPropagation()
+          const sel = doc.getSelection()
+          if (!sel?.rangeCount) return
+          const range = sel.getRangeAt(0)
+          state.handle = handleEl.dataset.edge === 'start' ? 'start' : 'end'
+          state.selecting = true
+          if (state.handle === 'end') {
+            state.anchorNode = range.startContainer
+            state.anchorOffset = range.startOffset
+          } else {
+            state.anchorNode = range.endContainer
+            state.anchorOffset = range.endOffset
+          }
+          return
+        }
+        if (target?.closest?.('.lg-pmark, a, button')) {
+          state.selecting = false
+          return
+        }
+        state.selecting = false
+        state.handle = null
         state.timer = window.setTimeout(() => {
           state.selecting = true
           selectWordAt(doc, state.x, state.y)
@@ -360,7 +468,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           navigator.vibrate?.(12)
         }, 400)
       },
-      { capture: true, passive: true },
+      { capture: true, passive: false },
     )
     doc.addEventListener(
       'touchmove',
@@ -368,6 +476,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (e.touches.length !== 1) return
         const t = e.touches[0]
         const moved = Math.hypot(t.clientX - state.x, t.clientY - state.y)
+        if (state.handle && state.anchorNode) {
+          e.preventDefault()
+          e.stopPropagation()
+          const point = rangeFromPoint(doc, t.clientX, t.clientY)
+          const sel = doc.getSelection()
+          if (!point || !sel) return
+          try {
+            sel.setBaseAndExtent(state.anchorNode, state.anchorOffset, point.startContainer, point.startOffset)
+          } catch {
+            extendSelectionTo(doc, t.clientX, t.clientY)
+          }
+          emitDocSelection(doc)
+          return
+        }
         if (!state.selecting) {
           if (moved > 12) window.clearTimeout(state.timer)
           return
@@ -381,26 +503,35 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     )
     const endSelect = (e: TouchEvent) => {
       window.clearTimeout(state.timer)
-      if (state.selecting) {
+      if (state.selecting || state.handle) {
         e.stopPropagation()
         emitDocSelection(doc)
         state.selecting = false
+        state.handle = null
         return
       }
       if (
         e.changedTouches.length === 1 &&
-        Date.now() - state.t < 280 &&
+        Date.now() - state.t < 400 &&
         Date.now() - pinchRef.current.lastAt > 350
       ) {
         const t = e.changedTouches[0]
-        const dx = Math.abs(t.clientX - state.x)
-        const dy = Math.abs(t.clientY - state.y)
-        if (dx < 12 && dy < 12) {
+        const dx = t.clientX - state.x
+        const dy = t.clientY - state.y
+        const mode = settingsRef.current.pageTurnMode
+        if (mode === 'swipe' && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+          e.stopPropagation()
+          if (dx < 0) void viewRef.current?.goRight()
+          else void viewRef.current?.goLeft()
+          return
+        }
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
           e.stopPropagation()
           handleContentTap(doc, t.clientX, t.clientY)
         }
       }
       state.selecting = false
+      state.handle = null
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
@@ -485,17 +616,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     getSelection: () => {
       const view = viewRef.current
       if (!view) return null
-      for (const { doc, index } of view.renderer.getContents()) {
-        const sel = doc.getSelection()
-        if (!sel || sel.isCollapsed || !sel.rangeCount) continue
-        const range = sel.getRangeAt(0)
-        const text = sel.toString().trim()
-        if (!text) continue
-        return { cfi: view.getCFI(index, range), text, index }
+      for (const { doc } of view.renderer.getContents()) {
+        const info = selectionFromDoc(doc)
+        if (info) return info
       }
       return null
     },
-    deselect: () => viewRef.current?.deselect(),
+    deselect: () => {
+      const view = viewRef.current
+      view?.deselect()
+      if (!view?.renderer) return
+      for (const { doc } of view.renderer.getContents()) {
+        if (doc) clearHandles(doc)
+      }
+    },
     search: async (query, regex) => {
       const view = viewRef.current
       if (!view || !query.trim()) return []
@@ -560,30 +694,16 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
     }
 
-    const readSelection = (): SelectionInfo | null => {
-      const v = viewRef.current
-      if (!v) return null
-      for (const { doc, index } of v.renderer.getContents()) {
-        const sel = doc.getSelection()
-        if (!sel || sel.isCollapsed || !sel.rangeCount) continue
-        const range = sel.getRangeAt(0)
-        const text = sel.toString().trim()
-        if (!text) continue
-        return { cfi: v.getCFI(index, range), text, index }
-      }
-      return null
-    }
-
     const onLoad = (e: Event) => {
       const { doc } = (e as CustomEvent).detail as { doc: Document; index: number }
       doc.addEventListener('selectionchange', () => {
         const sel = doc.getSelection()
         if (!sel || sel.isCollapsed) {
+          clearHandles(doc)
           onSelectionRef.current(null)
           return
         }
-        const info = readSelection()
-        if (info) onSelectionRef.current(info)
+        emitDocSelection(doc)
       })
       doc.addEventListener('click', (ev) => {
         const img = (ev.target as HTMLElement | null)?.closest?.('img')
@@ -611,6 +731,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         fraction: d.fraction ?? 0,
         locLabel: d.tocItem?.label || '',
       })
+      window.setTimeout(() => paintParagraphMarks(), 0)
     }
 
     const onCreateOverlay = () => {
@@ -627,7 +748,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const rec = annotationsRef.current.find((a) => a.cfiRange === annotation.value)
       if (!rec) return
       const [fn, opts] = drawAnnotation(rec.style, rec.color)
-      if (rec.style !== 'textColor' && rec.style !== 'bold') draw(fn, opts)
+      if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') draw(fn, opts)
       applyTextHighlight(doc, range, rec)
     }
 
@@ -674,6 +795,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (cancelled) return
         onReadyRef.current?.(book.toc ?? [], String(book.metadata?.title ?? ''), Boolean(view.mediaOverlay))
         paintAnnotations()
+        paintParagraphMarks()
         for (const part of view.renderer.getContents()) {
           if (part.doc) {
             bindPinchToDocument(part.doc)
@@ -717,6 +839,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       void Promise.resolve(view.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
     }
   }, [annotations])
+
+  useEffect(() => {
+    paintParagraphMarks()
+  }, [showParagraphMarks, bookmarks])
 
   useEffect(() => {
     const host = rootRef.current

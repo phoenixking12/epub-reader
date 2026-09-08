@@ -1,18 +1,18 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { db, getSettings, saveSettings, withSettingsDefaults } from '../db'
-import { FoliateHost, type FoliateHandle, type ParagraphTapInfo, type SelectionInfo } from '../engine/FoliateHost'
+import { FoliateHost, type FoliateHandle, type SelectionInfo } from '../engine/FoliateHost'
 import { themeColors } from '../engine/css'
 import { applyManualBrightness, followSystemBrightness, restoreNativeBrightness } from '../native/brightness'
+import { VolumeKeys } from '../native/volume'
 import { openWebSearch, shareText } from '../native/share'
 import { rememberCustomColor } from '../settings/colors'
 import { newId } from '../settings/defaults'
 import type { AnnotationRecord, BookmarkKind, DisplaySettings, TocNode } from '../types/models'
 import { BookmarkNameSheet } from './BookmarkNameSheet'
-import { DisplayPanel } from './DisplayPanel'
+import { DisplayPanel, type DisplaySection } from './DisplayPanel'
 import { Drawer, type DrawerMode, type DrawerTab } from './Drawer'
 import { ImageLightbox } from './ImageLightbox'
-import { ParagraphChip } from './ParagraphChip'
 import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -34,15 +34,15 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const display = settingsRow.display
   const file = useBookFile(book?.fileKey)
   const host = useRef<FoliateHandle>(null)
-  const [chrome, setChrome] = useState(true)
+  const [chrome, setChrome] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('nav')
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('toc')
   const [displayOpen, setDisplayOpen] = useState(false)
+  const [displaySection, setDisplaySection] = useState<DisplaySection>('display')
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [selection, setSelection] = useState<SelectionInfo | null>(null)
-  const [paraTap, setParaTap] = useState<ParagraphTapInfo | null>(null)
   const [bookmarkDraft, setBookmarkDraft] = useState<{
     cfi: string
     quote: string
@@ -63,7 +63,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const colors = themeColors(display)
   const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
   const showChrome = chrome && !overlayOpen && !selection
-  const existingPara = paraTap ? bookmarks.find((b) => b.cfi === paraTap.cfi || (b.kind === 'paragraph' && b.quote === paraTap.quote)) : undefined
+  const pageButtons = display.pageTurnMode === 'buttons'
   const autoBright = display.brightnessMode !== 'manual'
 
   useEffect(() => {
@@ -79,6 +79,26 @@ export function ReaderPage({ bookId, onBack }: Props) {
   }, [settingsRow?.display.brightness, settingsRow?.display.brightnessMode])
 
   useEffect(() => {
+    const enabled = display.pageTurnMode === 'volume'
+    void VolumeKeys.setEnabled({ enabled }).catch(() => undefined)
+    let remove: (() => void) | undefined
+    if (enabled) {
+      void VolumeKeys.addListener('volume', ({ direction }) => {
+        if (direction === 'up') host.current?.goLeft()
+        else host.current?.goRight()
+      })
+        .then((h) => {
+          remove = () => void h.remove()
+        })
+        .catch(() => undefined)
+    }
+    return () => {
+      remove?.()
+      void VolumeKeys.setEnabled({ enabled: false }).catch(() => undefined)
+    }
+  }, [display.pageTurnMode])
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' || e.key === 'h') host.current?.goLeft()
       if (e.key === 'ArrowRight' || e.key === 'l') host.current?.goRight()
@@ -89,7 +109,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
         setMenuOpen(false)
         setSelection(null)
         setNoteFor(null)
-        setParaTap(null)
         setBookmarkDraft(null)
       }
     }
@@ -144,7 +163,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
       id: info.id,
       title: info.title || info.quote.slice(0, 48) || 'Bookmark',
     })
-    setParaTap(null)
   }
 
   if (!book) return <div className="centered">Opening…</div>
@@ -158,6 +176,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
         lastLocation={book.progressCfi}
         settings={settingsRow.display}
         annotations={annotations}
+        bookmarks={bookmarks}
+        showParagraphMarks={showChrome}
         onRelocate={({ cfi, fraction, locLabel }) => {
           setFrac(fraction)
           setLoc(locLabel)
@@ -172,7 +192,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onSelection={(sel) => {
           setSelection(sel)
-          setParaTap(null)
           if (sel) {
             setChrome(false)
             setMenuOpen(false)
@@ -181,8 +200,18 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onParagraphTap={(info) => {
           setSelection(null)
           host.current?.deselect()
-          setParaTap(info)
-          if (info) setChrome(true)
+          if (info) {
+            const existing = bookmarks.find(
+              (b) => b.cfi === info.cfi || (b.kind === 'paragraph' && b.quote === info.quote),
+            )
+            openBookmarkSheet({
+              cfi: info.cfi,
+              quote: info.quote,
+              kind: 'paragraph',
+              id: existing?.id,
+              title: existing?.title,
+            })
+          }
         }}
         onShowAnnotation={(cfi) => {
           const rec = annotations.find((a) => a.cfiRange === cfi)
@@ -198,7 +227,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
           setHasMedia(media)
         }}
         onTapCenter={() => {
-          setParaTap(null)
           setMenuOpen(false)
           setChrome((v) => !v)
         }}
@@ -212,65 +240,41 @@ export function ReaderPage({ bookId, onBack }: Props) {
 
       {showChrome && (
         <header className="reader-top">
-          <button className="icon-btn" onClick={onBack}>
-            Library
-          </button>
-          <div className="reader-title">
-            <strong>{book.title}</strong>
-            <span>{loc || `${Math.round(frac * 100)}%`}</span>
-          </div>
           <button
-            className="icon-btn"
-            onClick={() => {
-              setDrawerMode('notes')
-              setDrawer(true)
-              setParaTap(null)
-              setMenuOpen(false)
-            }}
-          >
-            Notes
-            {annotations.length ? <span className="tab-count">{annotations.length}</span> : null}
-          </button>
-          <button
-            className="icon-btn"
+            className="icon-btn chrome-btn"
+            aria-label="Library and contents"
             onClick={() => {
               setDrawerMode('nav')
               setDrawerTab('toc')
               setDrawer(true)
-              setParaTap(null)
               setMenuOpen(false)
             }}
           >
-            Contents
+            ☰
           </button>
+          {pageButtons && (
+            <button className="icon-btn chrome-btn turn-btn" onClick={() => host.current?.goLeft()} aria-label="Previous page">
+              ‹
+            </button>
+          )}
+          <div className="reader-title">
+            <strong>{book.title}</strong>
+            <span>{loc || `${Math.round(frac * 100)}%`}</span>
+          </div>
+          {pageButtons && (
+            <button className="icon-btn chrome-btn turn-btn" onClick={() => host.current?.goRight()} aria-label="Next page">
+              ›
+            </button>
+          )}
           <button
-            className="icon-btn"
+            className="icon-btn chrome-btn"
             aria-expanded={menuOpen}
             aria-label="Reading menu"
             onClick={() => setMenuOpen((v) => !v)}
           >
-            Menu
+            ⋮
           </button>
         </header>
-      )}
-
-      {showChrome && (
-        <footer className="reader-bottom">
-          <button className="icon-btn" onClick={() => host.current?.goLeft()} aria-label="Previous page">
-            ‹
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.0001}
-            value={frac}
-            onChange={(e) => void host.current?.goToFraction(Number(e.target.value))}
-          />
-          <button className="icon-btn" onClick={() => host.current?.goRight()} aria-label="Next page">
-            ›
-          </button>
-        </footer>
       )}
 
       {showChrome && (
@@ -278,8 +282,23 @@ export function ReaderPage({ bookId, onBack }: Props) {
           open={menuOpen}
           hasMedia={hasMedia}
           onClose={() => setMenuOpen(false)}
+          onNotes={() => {
+            setDrawerMode('notes')
+            setDrawer(true)
+          }}
+          onText={() => {
+            setDisplaySection('text')
+            setDisplayOpen(true)
+          }}
+          onDisplay={() => {
+            setDisplaySection('display')
+            setDisplayOpen(true)
+          }}
+          onColor={() => {
+            setDisplaySection('color')
+            setDisplayOpen(true)
+          }}
           onFind={() => setSearchOpen(true)}
-          onReading={() => setDisplayOpen(true)}
           onBookmarkPage={() =>
             openBookmarkSheet({
               cfi: book.progressCfi,
@@ -292,23 +311,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
         />
       )}
 
-      {paraTap && !selection && !overlayOpen && (
-        <ParagraphChip
-          x={paraTap.x}
-          y={paraTap.y}
-          bookmarked={Boolean(existingPara)}
-          onBookmark={() =>
-            openBookmarkSheet({
-              cfi: paraTap.cfi,
-              quote: paraTap.quote,
-              kind: 'paragraph',
-              id: existingPara?.id,
-              title: existingPara?.title,
-            })
-          }
-        />
-      )}
-
       <Drawer
         open={drawer}
         mode={drawerMode}
@@ -318,6 +320,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         annotations={annotations}
         onTab={setDrawerTab}
         onClose={() => setDrawer(false)}
+        onLibrary={onBack}
         onGoTo={(t) => {
           void host.current?.goTo(t)
           setDrawer(false)
@@ -334,6 +337,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
 
       <DisplayPanel
         open={displayOpen}
+        section={displaySection}
         settings={settingsRow.display}
         customFonts={fonts}
         onChange={(patch) => void patchDisplay(patch)}
@@ -377,6 +381,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         defaultColor={settingsRow.display.defaultAnnotationColor}
         customColors={settingsRow.display.customHighlightColors}
         searchEngine={settingsRow.webSearchEngine}
+        anchor={selection?.rect}
         onHighlight={(style, color) => {
           if (!selection) return
           void addAnnotation(selection, style, color)

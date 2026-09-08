@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
 import { ColorRow } from './ColorRow'
 
@@ -9,6 +9,7 @@ interface Props {
   defaultColor: string
   customColors?: string[]
   searchEngine?: WebSearchEngine
+  anchor?: { left: number; top: number; right: number; bottom: number } | null
   onHighlight: (style: AnnotationStyle, color: string) => void
   onNote: () => void
   onBookmark: () => void
@@ -18,12 +19,24 @@ interface Props {
   onClose: () => void
 }
 
+const STYLES: Array<{ id: AnnotationStyle; label: string; mark: string; className?: string }> = [
+  { id: 'highlight', label: 'Highlight', mark: 'A', className: 'mark-hl' },
+  { id: 'underline', label: 'Underline', mark: 'A', className: 'mark-ul' },
+  { id: 'textColor', label: 'Font color', mark: 'A', className: 'mark-fg' },
+  { id: 'bold', label: 'Bold', mark: 'B' },
+  { id: 'italic', label: 'Italic', mark: 'I' },
+  { id: 'strike', label: 'Strike', mark: 'S' },
+  { id: 'squiggly', label: 'Squiggle', mark: 'A', className: 'mark-sq' },
+]
+
 export function SelectionToolbar({
   visible,
   quote,
+  defaultStyle = 'highlight',
   defaultColor,
   customColors = [],
   searchEngine,
+  anchor,
   onHighlight,
   onNote,
   onBookmark,
@@ -33,29 +46,79 @@ export function SelectionToolbar({
   onClose,
 }: Props) {
   const [color, setColor] = useState(defaultColor)
+  const [style, setStyle] = useState<AnnotationStyle>(defaultStyle)
   const [wheelOpen, setWheelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const popRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 8 })
 
   useEffect(() => {
     if (visible) {
       setColor(defaultColor)
+      setStyle(defaultStyle === 'highlight' || defaultStyle === 'underline' || defaultStyle === 'textColor' ? defaultStyle : 'highlight')
       setWheelOpen(false)
       setMoreOpen(false)
     }
-  }, [visible, defaultColor, quote])
+  }, [visible, defaultColor, defaultStyle, quote])
+
+  useLayoutEffect(() => {
+    if (!visible) return
+    const el = popRef.current
+    const width = el?.offsetWidth ?? 280
+    const height = el?.offsetHeight ?? 160
+    const margin = 8
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const box = anchor ?? { left: 16, top: vh / 2, right: vw - 16, bottom: vh / 2 }
+    const mid = (box.left + box.right) / 2
+    let left = Math.min(Math.max(margin, mid - width / 2), vw - width - margin)
+    let top = box.top - height - 12
+    if (top < margin) top = box.bottom + 12
+    if (top + height > vh - margin) top = Math.max(margin, vh - height - margin)
+    if (Number.isNaN(left)) left = margin
+    setPos({ top, left })
+  }, [visible, anchor, wheelOpen, moreOpen, quote, style])
+
+  const defineLabel = useMemo(
+    () => (searchEngine === 'google' ? 'Google' : searchEngine === 'duckduckgo' ? 'DuckDuckGo' : 'Define'),
+    [searchEngine],
+  )
 
   if (!visible) return null
 
-  const defineLabel =
-    searchEngine === 'google' ? 'Google' : searchEngine === 'duckduckgo' ? 'DuckDuckGo' : 'Define'
-
-  const pick = (hex: string) => {
-    setColor(hex)
-    onHighlight('highlight', hex)
+  const apply = (nextStyle: AnnotationStyle, nextColor = color) => {
+    setStyle(nextStyle)
+    setColor(nextColor)
+    onHighlight(nextStyle, nextColor)
   }
 
   return (
-    <div className="selection-pop" role="dialog" aria-label="Selection">
+    <div
+      ref={popRef}
+      className="selection-pop"
+      role="dialog"
+      aria-label="Selection"
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <div className="sel-styles">
+        {STYLES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`sel-icon ${item.className ?? ''} ${style === item.id ? 'on' : ''}`}
+            aria-label={item.label}
+            aria-pressed={style === item.id}
+            onClick={() => {
+              setStyle(item.id)
+              if (item.id === 'bold' || item.id === 'italic' || item.id === 'strike' || item.id === 'squiggly') {
+                onHighlight(item.id, color)
+              }
+            }}
+          >
+            {item.mark}
+          </button>
+        ))}
+      </div>
       <ColorRow
         color={color}
         customColors={customColors}
@@ -64,25 +127,25 @@ export function SelectionToolbar({
           setMoreOpen(false)
           setWheelOpen((v) => !v)
         }}
-        onPick={pick}
+        onPick={(c) => apply(style, c)}
         onWheelChange={setColor}
-        onWheelCommit={(c) => {
-          setColor(c)
-          onHighlight('highlight', c)
-        }}
+        onWheelCommit={(c) => apply(style, c)}
       />
       <div className="selection-actions">
-        <button className="sel-btn" onClick={() => onHighlight('underline', color)}>
-          Underline
-        </button>
-        <button className="sel-btn" onClick={onSearch}>
-          {defineLabel}
+        <button className="sel-btn ghost" onClick={onClose} aria-label="Close">
+          ✕
         </button>
         <button className="sel-btn" onClick={onNote}>
           Note
         </button>
         <button className="sel-btn" onClick={onCopy}>
           Copy
+        </button>
+        <button className="sel-btn" onClick={onBookmark}>
+          Bookmark
+        </button>
+        <button className="sel-btn" onClick={onSearch}>
+          {defineLabel}
         </button>
         <button
           className={`sel-btn ghost ${moreOpen ? 'on' : ''}`}
@@ -94,15 +157,9 @@ export function SelectionToolbar({
         >
           ⋯
         </button>
-        <button className="sel-btn ghost" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
       </div>
       {moreOpen && (
         <div className="selection-more">
-          <button className="sel-btn" onClick={onBookmark}>
-            Bookmark
-          </button>
           <button className="sel-btn" onClick={onShare}>
             Share
           </button>

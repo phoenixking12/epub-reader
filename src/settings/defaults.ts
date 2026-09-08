@@ -5,6 +5,7 @@ import type {
   DisplaySettings,
   FileRecord,
   FontRecord,
+  PageTurnMode,
   SettingsRecord,
 } from '../types/models'
 
@@ -22,6 +23,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   justify: true,
   hyphenate: true,
   flow: 'paginated',
+  pageTurnMode: 'swipe',
   brightness: 1,
   brightnessMode: 'auto',
   customHighlightColors: [],
@@ -76,6 +78,23 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
 
 export function newId(): string {
   return crypto.randomUUID()
+}
+
+export function flowForPageTurn(mode: PageTurnMode): DisplaySettings['flow'] {
+  return mode === 'scroll' ? 'scrolled' : 'paginated'
+}
+
+export function migrateDisplay(display?: Partial<DisplaySettings> | null): DisplaySettings {
+  const merged = { ...DEFAULT_DISPLAY, ...display }
+  const pageTurnMode: PageTurnMode =
+    display?.pageTurnMode ?? (display?.flow === 'scrolled' ? 'scroll' : DEFAULT_DISPLAY.pageTurnMode)
+  return {
+    ...merged,
+    pageTurnMode,
+    flow: flowForPageTurn(pageTurnMode),
+    customHighlightColors: merged.customHighlightColors ?? [],
+    brightnessMode: merged.brightnessMode ?? 'auto',
+  }
 }
 
 export function emptyBook(partial: Partial<BookRecord> & Pick<BookRecord, 'id' | 'fileKey' | 'title'>): BookRecord {
