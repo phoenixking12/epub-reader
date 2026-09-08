@@ -1,26 +1,26 @@
 import { ScreenBrightness } from '@capacitor-community/screen-brightness'
 import { isNative } from './platform'
 
-let original: number | null = null
+const FOLLOW_SYSTEM = -1
 
-export async function applyNativeBrightness(value: number): Promise<void> {
+export async function followSystemBrightness(): Promise<void> {
   if (!isNative()) return
   try {
-    if (original == null) {
-      const { brightness } = await ScreenBrightness.getBrightness()
-      original = brightness
-    }
-    await ScreenBrightness.setBrightness({ brightness: Math.min(1, Math.max(0.01, value) ) })
+    await ScreenBrightness.setBrightness({ brightness: FOLLOW_SYSTEM })
+  } catch {
+    /* plugin unavailable */
+  }
+}
+
+export async function applyManualBrightness(value: number): Promise<void> {
+  if (!isNative()) return
+  try {
+    await ScreenBrightness.setBrightness({ brightness: Math.min(1, Math.max(0.05, value)) })
   } catch {
     /* plugin unavailable */
   }
 }
 
 export async function restoreNativeBrightness(): Promise<void> {
-  if (!isNative() || original == null) return
-  try {
-    await ScreenBrightness.setBrightness({ brightness: original })
-  } catch {
-    /* ignore */
-  }
+  await followSystemBrightness()
 }

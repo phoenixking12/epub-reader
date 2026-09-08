@@ -56,3 +56,12 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<Sett
   await db.settings.put(next)
   return next
 }
+
+export function withSettingsDefaults(row?: SettingsRecord | null): SettingsRecord {
+  if (!row) return DEFAULT_SETTINGS
+  return {
+    ...DEFAULT_SETTINGS,
+    ...row,
+    display: { ...DEFAULT_SETTINGS.display, ...row.display },
+  }
+}

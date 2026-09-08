@@ -26,8 +26,8 @@ export default defineConfig({
         handler(html) {
           if (process.env.NODE_ENV === 'development') return html
           return html.replace(
-            '<title>EPUB Reader</title>',
-            `<meta http-equiv="Content-Security-Policy" content="${csp}" />\n    <title>EPUB Reader</title>`,
+            '<title>LoreGuard</title>',
+            `<meta http-equiv="Content-Security-Policy" content="${csp}" />\n    <title>LoreGuard</title>`,
           )
         },
       },

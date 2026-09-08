@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AnnotationRecord, BookmarkRecord, TocNode } from '../types/models'
 
-export type DrawerTab = 'toc' | 'marks' | 'notes'
+export type DrawerTab = 'toc' | 'marks'
+export type DrawerMode = 'nav' | 'notes'
 
 interface Props {
   open: boolean
+  mode: DrawerMode
   tab: DrawerTab
   toc: TocNode[]
   bookmarks: BookmarkRecord[]
@@ -43,8 +45,16 @@ function styleLabel(style: AnnotationRecord['style']) {
   return 'Highlight'
 }
 
+function kindLabel(kind: BookmarkRecord['kind']) {
+  if (kind === 'paragraph') return 'Paragraph'
+  if (kind === 'selection') return 'Selection'
+  if (kind === 'chapter') return 'Chapter'
+  return 'Place'
+}
+
 export function Drawer({
   open,
+  mode,
   tab,
   toc,
   bookmarks,
@@ -69,6 +79,11 @@ export function Drawer({
         .sort((a, b) => b.createdAt - a.createdAt),
     [annotations, colorFilter],
   )
+  const paragraphMarks = bookmarks.filter((b) => b.kind === 'paragraph' || b.kind === 'selection')
+  const placeMarks = bookmarks.filter((b) => b.kind !== 'paragraph' && b.kind !== 'selection')
+  const orderedMarks = [...paragraphMarks, ...placeMarks].length
+    ? [...bookmarks].sort((a, b) => b.createdAt - a.createdAt)
+    : bookmarks
 
   useEffect(() => {
     if (!open) {
@@ -78,34 +93,35 @@ export function Drawer({
   }, [open])
 
   if (!open) return null
+  const heading = mode === 'notes' ? 'Notes' : tab === 'toc' ? 'Contents' : 'Bookmarks'
   return (
     <div className="drawer-root">
       <button className="drawer-scrim" aria-label="Close" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-label="Book menu">
+      <aside className="drawer" role="dialog" aria-label={heading}>
         <header className="drawer-head">
-          <h2>{tab === 'toc' ? 'Contents' : tab === 'notes' ? 'Highlights' : 'Bookmarks'}</h2>
+          <h2>{heading}</h2>
           <button className="icon-btn" onClick={onClose}>
             Close
           </button>
         </header>
-        <div className="drawer-tabs">
-          <button className={tab === 'toc' ? 'active' : ''} onClick={() => onTab('toc')}>
-            Contents
-          </button>
-          <button className={tab === 'notes' ? 'active' : ''} onClick={() => onTab('notes')}>
-            Highlights
-            {annotations.length ? <span className="tab-count">{annotations.length}</span> : null}
-          </button>
-          <button className={tab === 'marks' ? 'active' : ''} onClick={() => onTab('marks')}>
-            Marks
-            {bookmarks.length ? <span className="tab-count">{bookmarks.length}</span> : null}
-          </button>
-        </div>
-        {tab === 'toc' && <TocTree items={toc} onGoTo={onGoTo} />}
-        {tab === 'marks' && (
+        {mode === 'nav' && (
+          <div className="drawer-tabs">
+            <button className={tab === 'toc' ? 'active' : ''} onClick={() => onTab('toc')}>
+              Contents
+            </button>
+            <button className={tab === 'marks' ? 'active' : ''} onClick={() => onTab('marks')}>
+              Bookmarks
+              {bookmarks.length ? <span className="tab-count">{bookmarks.length}</span> : null}
+            </button>
+          </div>
+        )}
+        {mode === 'nav' && tab === 'toc' && <TocTree items={toc} onGoTo={onGoTo} />}
+        {mode === 'nav' && tab === 'marks' && (
           <ul className="list">
-            {bookmarks.length === 0 && <li className="muted empty-hint">Tap Bookmark while reading to save a place.</li>}
-            {bookmarks.map((b) => (
+            {orderedMarks.length === 0 && (
+              <li className="muted empty-hint">Tap a paragraph, then Bookmark, and give it a name.</li>
+            )}
+            {orderedMarks.map((b) => (
               <li key={b.id} className="mark-row">
                 {editing === b.id ? (
                   <form
@@ -124,6 +140,7 @@ export function Drawer({
                 ) : (
                   <>
                     <button className="toc-item" onClick={() => onGoTo(b.cfi)}>
+                      <span className="hl-kind">{kindLabel(b.kind)}</span>
                       <strong>{b.title || 'Bookmark'}</strong>
                       {b.quote ? <span className="quote">{b.quote}</span> : null}
                     </button>
@@ -147,7 +164,7 @@ export function Drawer({
             ))}
           </ul>
         )}
-        {tab === 'notes' && (
+        {mode === 'notes' && (
           <>
             {colors.length > 1 && (
               <div className="color-row compact">

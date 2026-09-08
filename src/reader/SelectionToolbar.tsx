@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
-import { HIGHLIGHT_COLORS } from '../settings/defaults'
-import { ColorWheel } from './ColorWheel'
+import { ColorRow } from './ColorRow'
 
 interface Props {
   visible: boolean
   quote?: string
   defaultStyle?: AnnotationStyle
   defaultColor: string
+  customColors?: string[]
   searchEngine?: WebSearchEngine
   onHighlight: (style: AnnotationStyle, color: string) => void
   onNote: () => void
@@ -22,6 +22,7 @@ export function SelectionToolbar({
   visible,
   quote,
   defaultColor,
+  customColors = [],
   searchEngine,
   onHighlight,
   onNote,
@@ -48,42 +49,28 @@ export function SelectionToolbar({
   const defineLabel =
     searchEngine === 'google' ? 'Google' : searchEngine === 'duckduckgo' ? 'DuckDuckGo' : 'Define'
 
+  const pick = (hex: string) => {
+    setColor(hex)
+    onHighlight('highlight', hex)
+  }
+
   return (
     <div className="selection-pop" role="dialog" aria-label="Selection">
-      <div className="color-row compact">
-        {HIGHLIGHT_COLORS.map((c) => (
-          <button
-            key={c}
-            className={`swatch ${c === color ? 'active' : ''}`}
-            style={{ background: c }}
-            aria-label={`Highlight ${c}`}
-            onClick={() => {
-              setColor(c)
-              onHighlight('highlight', c)
-            }}
-          />
-        ))}
-        <button
-          className={`swatch wheel-toggle ${wheelOpen ? 'active' : ''}`}
-          aria-label="More colors"
-          onClick={() => {
-            setMoreOpen(false)
-            setWheelOpen((v) => !v)
-          }}
-        >
-          ◐
-        </button>
-      </div>
-      {wheelOpen && (
-        <ColorWheel
-          color={color}
-          onChange={setColor}
-          onCommit={(c) => {
-            setColor(c)
-            onHighlight('highlight', c)
-          }}
-        />
-      )}
+      <ColorRow
+        color={color}
+        customColors={customColors}
+        wheelOpen={wheelOpen}
+        onToggleWheel={() => {
+          setMoreOpen(false)
+          setWheelOpen((v) => !v)
+        }}
+        onPick={pick}
+        onWheelChange={setColor}
+        onWheelCommit={(c) => {
+          setColor(c)
+          onHighlight('highlight', c)
+        }}
+      />
       <div className="selection-actions">
         <button className="sel-btn" onClick={() => onHighlight('underline', color)}>
           Underline

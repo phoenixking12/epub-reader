@@ -115,9 +115,12 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
       }}
     >
       <header className="lib-top">
-        <div>
-          <p className="eyebrow">Library</p>
-          <h1>{books.length ? `${books.length} book${books.length === 1 ? '' : 's'}` : 'Your books'}</h1>
+        <div className="brand-lockup">
+          <img src="/logo.png" alt="" className="brand-logo" width={56} height={56} />
+          <div>
+            <p className="eyebrow">LoreGuard</p>
+            <h1>{books.length ? `${books.length} book${books.length === 1 ? '' : 's'}` : 'Your books'}</h1>
+          </div>
         </div>
         <button className="icon-btn" onClick={onSettings}>
           Settings

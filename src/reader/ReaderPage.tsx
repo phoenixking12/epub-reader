@@ -1,15 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
-import { db, getSettings, saveSettings } from '../db'
-import { FoliateHost, type FoliateHandle, type SelectionInfo } from '../engine/FoliateHost'
+import { db, getSettings, saveSettings, withSettingsDefaults } from '../db'
+import { FoliateHost, type FoliateHandle, type ParagraphTapInfo, type SelectionInfo } from '../engine/FoliateHost'
 import { themeColors } from '../engine/css'
-import { applyNativeBrightness, restoreNativeBrightness } from '../native/brightness'
+import { applyManualBrightness, followSystemBrightness, restoreNativeBrightness } from '../native/brightness'
 import { openWebSearch, shareText } from '../native/share'
-import { DEFAULT_DISPLAY, newId } from '../settings/defaults'
+import { rememberCustomColor } from '../settings/colors'
+import { newId } from '../settings/defaults'
 import type { AnnotationRecord, BookmarkKind, DisplaySettings, TocNode } from '../types/models'
+import { BookmarkNameSheet } from './BookmarkNameSheet'
 import { DisplayPanel } from './DisplayPanel'
-import { Drawer, type DrawerTab } from './Drawer'
+import { Drawer, type DrawerMode, type DrawerTab } from './Drawer'
 import { ImageLightbox } from './ImageLightbox'
+import { ParagraphChip } from './ParagraphChip'
+import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
 
@@ -20,23 +24,32 @@ interface Props {
 
 export function ReaderPage({ bookId, onBack }: Props) {
   const book = useLiveQuery(() => db.books.get(bookId), [bookId])
-  const bookmarks = useLiveQuery(
-    () => db.bookmarks.where('bookId').equals(bookId).sortBy('order'),
-    [bookId],
-  ) ?? []
+  const bookmarks =
+    useLiveQuery(() => db.bookmarks.where('bookId').equals(bookId).sortBy('order'), [bookId]) ?? []
   const annotations =
     useLiveQuery(() => db.annotations.where('bookId').equals(bookId).toArray(), [bookId]) ?? []
   const fonts = useLiveQuery(() => db.fonts.toArray()) ?? []
-  const settingsRow = useLiveQuery(() => db.settings.get('global'))
-  const display = settingsRow?.display ?? DEFAULT_DISPLAY
+  const settingsLive = useLiveQuery(() => db.settings.get('global'))
+  const settingsRow = withSettingsDefaults(settingsLive)
+  const display = settingsRow.display
   const file = useBookFile(book?.fileKey)
   const host = useRef<FoliateHandle>(null)
   const [chrome, setChrome] = useState(true)
   const [drawer, setDrawer] = useState(false)
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>('nav')
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('toc')
   const [displayOpen, setDisplayOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [selection, setSelection] = useState<SelectionInfo | null>(null)
+  const [paraTap, setParaTap] = useState<ParagraphTapInfo | null>(null)
+  const [bookmarkDraft, setBookmarkDraft] = useState<{
+    cfi: string
+    quote: string
+    kind: BookmarkKind
+    id?: string
+    title: string
+  } | null>(null)
   const [image, setImage] = useState<{ src: string; alt: string } | null>(null)
   const [footnote, setFootnote] = useState<{ html: string; href: string } | null>(null)
   const [toc, setToc] = useState<TocNode[]>([])
@@ -48,16 +61,22 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const saveTimer = useRef(0)
 
   const colors = themeColors(display)
-  const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor)
+  const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
   const showChrome = chrome && !overlayOpen && !selection
+  const existingPara = paraTap ? bookmarks.find((b) => b.cfi === paraTap.cfi || (b.kind === 'paragraph' && b.quote === paraTap.quote)) : undefined
+  const autoBright = display.brightnessMode !== 'manual'
 
   useEffect(() => {
-    const d = settingsRow?.display
-    if (d) void applyNativeBrightness(d.brightness)
+    if (!settingsRow?.display) return
+    if (settingsRow.display.brightnessMode === 'manual') {
+      void applyManualBrightness(settingsRow.display.brightness)
+    } else {
+      void followSystemBrightness()
+    }
     return () => {
       void restoreNativeBrightness()
     }
-  }, [settingsRow?.display.brightness])
+  }, [settingsRow?.display.brightness, settingsRow?.display.brightnessMode])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,8 +86,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
         setDrawer(false)
         setDisplayOpen(false)
         setSearchOpen(false)
+        setMenuOpen(false)
         setSelection(null)
         setNoteFor(null)
+        setParaTap(null)
+        setBookmarkDraft(null)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -94,7 +116,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
     })
   }
 
-  const addAnnotation = async (sel: SelectionInfo, style = display.defaultAnnotationStyle, color = display.defaultAnnotationColor, note = '') => {
+  const addAnnotation = async (
+    sel: SelectionInfo,
+    style = display.defaultAnnotationStyle,
+    color = display.defaultAnnotationColor,
+    note = '',
+  ) => {
     const rec: AnnotationRecord = {
       id: newId(),
       bookId,
@@ -109,8 +136,19 @@ export function ReaderPage({ bookId, onBack }: Props) {
     return rec
   }
 
+  const openBookmarkSheet = (info: { cfi: string; quote: string; kind: BookmarkKind; id?: string; title?: string }) => {
+    setBookmarkDraft({
+      cfi: info.cfi,
+      quote: info.quote,
+      kind: info.kind,
+      id: info.id,
+      title: info.title || info.quote.slice(0, 48) || 'Bookmark',
+    })
+    setParaTap(null)
+  }
+
   if (!book) return <div className="centered">Opening…</div>
-  if (!file || !settingsRow) return <div className="centered">Loading book…</div>
+  if (!file || settingsLive === undefined) return <div className="centered">Loading book…</div>
 
   return (
     <div className="reader" style={{ background: colors.bg }}>
@@ -134,7 +172,17 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onSelection={(sel) => {
           setSelection(sel)
-          if (sel) setChrome(false)
+          setParaTap(null)
+          if (sel) {
+            setChrome(false)
+            setMenuOpen(false)
+          }
+        }}
+        onParagraphTap={(info) => {
+          setSelection(null)
+          host.current?.deselect()
+          setParaTap(info)
+          if (info) setChrome(true)
         }}
         onShowAnnotation={(cfi) => {
           const rec = annotations.find((a) => a.cfiRange === cfi)
@@ -149,41 +197,59 @@ export function ReaderPage({ bookId, onBack }: Props) {
           setToc((t as TocNode[]) ?? [])
           setHasMedia(media)
         }}
-        onTapCenter={() => setChrome((v) => !v)}
+        onTapCenter={() => {
+          setParaTap(null)
+          setMenuOpen(false)
+          setChrome((v) => !v)
+        }}
         onFontSizeChange={(size) => void patchDisplay({ fontSize: size })}
       />
 
-      <div className="brightness-veil" style={{ opacity: 1 - settingsRow.display.brightness }} />
+      <div
+        className="brightness-veil"
+        style={{ opacity: autoBright ? 0 : 1 - settingsRow.display.brightness }}
+      />
 
       {showChrome && (
         <header className="reader-top">
           <button className="icon-btn" onClick={onBack}>
             Library
           </button>
-          <button
-            className="reader-title"
-            onClick={() => {
-              setDrawerTab('toc')
-              setDrawer(true)
-            }}
-          >
+          <div className="reader-title">
             <strong>{book.title}</strong>
             <span>{loc || `${Math.round(frac * 100)}%`}</span>
-          </button>
-          <button className="icon-btn" onClick={() => setSearchOpen(true)}>
-            Find
-          </button>
-          <button className="icon-btn" onClick={() => setDisplayOpen(true)}>
-            Aa
+          </div>
+          <button
+            className="icon-btn"
+            onClick={() => {
+              setDrawerMode('notes')
+              setDrawer(true)
+              setParaTap(null)
+              setMenuOpen(false)
+            }}
+          >
+            Notes
+            {annotations.length ? <span className="tab-count">{annotations.length}</span> : null}
           </button>
           <button
             className="icon-btn"
             onClick={() => {
-              setDrawerTab('notes')
+              setDrawerMode('nav')
+              setDrawerTab('toc')
               setDrawer(true)
+              setParaTap(null)
+              setMenuOpen(false)
             }}
           >
-            Highlights
+            Contents
+          </button>
+          <button
+            className="icon-btn"
+            aria-expanded={menuOpen}
+            aria-label="Reading menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            Menu
           </button>
         </header>
       )}
@@ -204,24 +270,48 @@ export function ReaderPage({ bookId, onBack }: Props) {
           <button className="icon-btn" onClick={() => host.current?.goRight()} aria-label="Next page">
             ›
           </button>
-          <button
-            className="icon-btn"
-            onClick={() =>
-              void addBookmark('position', book.progressCfi, loc, loc || 'Current position')
-            }
-          >
-            Bookmark
-          </button>
-          {hasMedia && (
-            <button className="icon-btn" onClick={() => host.current?.startMediaOverlay()}>
-              Audio
-            </button>
-          )}
         </footer>
+      )}
+
+      {showChrome && (
+        <ReaderMenu
+          open={menuOpen}
+          hasMedia={hasMedia}
+          onClose={() => setMenuOpen(false)}
+          onFind={() => setSearchOpen(true)}
+          onReading={() => setDisplayOpen(true)}
+          onBookmarkPage={() =>
+            openBookmarkSheet({
+              cfi: book.progressCfi,
+              quote: loc,
+              kind: 'position',
+              title: loc || 'Current position',
+            })
+          }
+          onAudio={() => host.current?.startMediaOverlay()}
+        />
+      )}
+
+      {paraTap && !selection && !overlayOpen && (
+        <ParagraphChip
+          x={paraTap.x}
+          y={paraTap.y}
+          bookmarked={Boolean(existingPara)}
+          onBookmark={() =>
+            openBookmarkSheet({
+              cfi: paraTap.cfi,
+              quote: paraTap.quote,
+              kind: 'paragraph',
+              id: existingPara?.id,
+              title: existingPara?.title,
+            })
+          }
+        />
       )}
 
       <Drawer
         open={drawer}
+        mode={drawerMode}
         tab={drawerTab}
         toc={toc}
         bookmarks={bookmarks}
@@ -285,12 +375,18 @@ export function ReaderPage({ bookId, onBack }: Props) {
         quote={selection?.text}
         defaultStyle={settingsRow.display.defaultAnnotationStyle}
         defaultColor={settingsRow.display.defaultAnnotationColor}
+        customColors={settingsRow.display.customHighlightColors}
         searchEngine={settingsRow.webSearchEngine}
         onHighlight={(style, color) => {
           if (!selection) return
           void addAnnotation(selection, style, color)
           void saveSettings({
-            display: { ...settingsRow.display, defaultAnnotationStyle: style, defaultAnnotationColor: color },
+            display: {
+              ...settingsRow.display,
+              defaultAnnotationStyle: style,
+              defaultAnnotationColor: color,
+              customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
+            },
           })
           host.current?.deselect()
           setSelection(null)
@@ -304,9 +400,14 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onBookmark={() => {
           if (!selection) return
-          void addBookmark('selection', selection.cfi, selection.text)
+          openBookmarkSheet({
+            cfi: selection.cfi,
+            quote: selection.text,
+            kind: 'selection',
+            title: selection.text.slice(0, 48),
+          })
+          host.current?.deselect()
           setSelection(null)
-          setChrome(true)
         }}
         onSearch={() => {
           if (!selection) return
@@ -324,6 +425,31 @@ export function ReaderPage({ bookId, onBack }: Props) {
           setSelection(null)
           setChrome(true)
         }}
+      />
+
+      <BookmarkNameSheet
+        open={Boolean(bookmarkDraft)}
+        title={bookmarkDraft?.title ?? ''}
+        quote={bookmarkDraft?.quote ?? ''}
+        existing={Boolean(bookmarkDraft?.id)}
+        onTitle={(title) => setBookmarkDraft((d) => (d ? { ...d, title } : d))}
+        onSave={async () => {
+          if (!bookmarkDraft) return
+          const title = bookmarkDraft.title.trim() || bookmarkDraft.quote.slice(0, 80) || 'Bookmark'
+          if (bookmarkDraft.id) await db.bookmarks.update(bookmarkDraft.id, { title })
+          else await addBookmark(bookmarkDraft.kind, bookmarkDraft.cfi, bookmarkDraft.quote, title)
+          setBookmarkDraft(null)
+          setChrome(true)
+        }}
+        onRemove={
+          bookmarkDraft?.id
+            ? async () => {
+                await db.bookmarks.delete(bookmarkDraft.id as string)
+                setBookmarkDraft(null)
+              }
+            : undefined
+        }
+        onClose={() => setBookmarkDraft(null)}
       />
 
       <ImageLightbox image={image} onClose={() => setImage(null)} />

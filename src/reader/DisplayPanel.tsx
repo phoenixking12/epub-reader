@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { BUNDLED_FONTS, HIGHLIGHT_COLORS } from '../settings/defaults'
+import { BUNDLED_FONTS } from '../settings/defaults'
+import { rememberCustomColor } from '../settings/colors'
 import type { DisplaySettings, FontRecord } from '../types/models'
+import { ColorRow } from './ColorRow'
 
 interface Props {
   open: boolean
@@ -15,6 +17,7 @@ const THEME_LABELS = { day: 'Day', sepia: 'Sepia', night: 'Night', custom: 'Cust
 
 export function DisplayPanel({ open, settings, customFonts, onChange, onImportFont, onClose }: Props) {
   const [tab, setTab] = useState<'look' | 'page' | 'more'>('look')
+  const [wheelOpen, setWheelOpen] = useState(false)
   if (!open) return null
   return (
     <div className="sheet display-sheet" role="dialog" aria-label="Reading settings">
@@ -88,29 +91,50 @@ export function DisplayPanel({ open, settings, customFonts, onChange, onImportFo
               onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
             />
           </label>
-          <label className="field">
-            Brightness {Math.round(settings.brightness * 100)}%
-            <input
-              type="range"
-              min={0.2}
-              max={1}
-              step={0.02}
-              value={settings.brightness}
-              onChange={(e) => onChange({ brightness: Number(e.target.value) })}
-            />
-          </label>
-          <p className="field-label">Highlight color</p>
-          <div className="color-row compact">
-            {HIGHLIGHT_COLORS.map((c) => (
-              <button
-                key={c}
-                className={`swatch ${settings.defaultAnnotationColor === c ? 'active' : ''}`}
-                style={{ background: c }}
-                aria-label={`Highlight ${c}`}
-                onClick={() => onChange({ defaultAnnotationColor: c })}
-              />
-            ))}
+          <p className="field-label">Brightness</p>
+          <div className="action-row">
+            <button
+              className={settings.brightnessMode !== 'manual' ? 'chip active' : 'chip'}
+              onClick={() => onChange({ brightnessMode: 'auto' })}
+            >
+              Auto
+            </button>
+            <button
+              className={settings.brightnessMode === 'manual' ? 'chip active' : 'chip'}
+              onClick={() => onChange({ brightnessMode: 'manual' })}
+            >
+              Manual
+            </button>
           </div>
+          {settings.brightnessMode !== 'manual' ? (
+            <p className="muted">Follows the phone’s brightness.</p>
+          ) : (
+            <label className="field">
+              Level {Math.round(settings.brightness * 100)}%
+              <input
+                type="range"
+                min={0.2}
+                max={1}
+                step={0.02}
+                value={settings.brightness}
+                onChange={(e) => onChange({ brightness: Number(e.target.value) })}
+              />
+            </label>
+          )}
+          <p className="field-label">Highlight color</p>
+          <ColorRow
+            color={settings.defaultAnnotationColor}
+            customColors={settings.customHighlightColors}
+            wheelOpen={wheelOpen}
+            onToggleWheel={() => setWheelOpen((v) => !v)}
+            onPick={(c) => onChange({ defaultAnnotationColor: c })}
+            onWheelCommit={(c) =>
+              onChange({
+                defaultAnnotationColor: c,
+                customHighlightColors: rememberCustomColor(settings.customHighlightColors, c),
+              })
+            }
+          />
         </>
       )}
 

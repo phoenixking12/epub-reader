@@ -38,6 +38,13 @@ export interface SearchHit {
   label?: string
 }
 
+export interface ParagraphTapInfo {
+  cfi: string
+  quote: string
+  x: number
+  y: number
+}
+
 export interface FoliateHandle {
   goLeft: () => void
   goRight: () => void
@@ -65,6 +72,7 @@ interface Props {
   onFootnote: (note: FootnoteInfo | null) => void
   onReady?: (toc: unknown, title: string, hasMedia: boolean) => void
   onTapCenter: () => void
+  onParagraphTap: (info: ParagraphTapInfo | null) => void
   onFontSizeChange: (size: number) => void
 }
 
@@ -115,6 +123,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     onFootnote,
     onReady,
     onTapCenter,
+    onParagraphTap,
     onFontSizeChange,
   },
   ref,
@@ -123,7 +132,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const viewRef = useRef<View | null>(null)
   const settingsRef = useRef(settings)
   const annotationsRef = useRef(annotations)
-  const tapRef = useRef({ x: 0, y: 0, t: 0 })
   const pinchRef = useRef({ active: false, startDist: 0, startSize: 18, lastSize: 18, lastAt: 0 })
   const badgeRef = useRef<HTMLDivElement>(null)
   const pinchDocs = useRef(new WeakSet<Document>())
@@ -134,6 +142,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const onImageRef = useRef(onImage)
   const onFootnoteRef = useRef(onFootnote)
   const onTapCenterRef = useRef(onTapCenter)
+  const onParagraphTapRef = useRef(onParagraphTap)
   const onReadyRef = useRef(onReady)
   const onFontSizeRef = useRef(onFontSizeChange)
 
@@ -145,6 +154,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   onImageRef.current = onImage
   onFootnoteRef.current = onFootnote
   onTapCenterRef.current = onTapCenter
+  onParagraphTapRef.current = onParagraphTap
   onReadyRef.current = onReady
   onFontSizeRef.current = onFontSizeChange
 
@@ -244,6 +254,67 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
+  const paragraphFromPoint = (doc: Document, x: number, y: number) => {
+    const el = doc.elementFromPoint(x, y)
+    if (!el) return null
+    if (el.closest('a, img, svg, video, audio, button')) return null
+    const block = el.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption, th, td')
+    if (!(block instanceof HTMLElement)) return null
+    const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
+    if (!quote) return null
+    const range = doc.createRange()
+    try {
+      range.selectNodeContents(block)
+    } catch {
+      return null
+    }
+    return { quote, range, block }
+  }
+
+  const toViewport = (doc: Document, x: number, y: number) => {
+    const frame = doc.defaultView?.frameElement
+    if (frame instanceof HTMLElement) {
+      const rect = frame.getBoundingClientRect()
+      return { x: rect.left + x, y: rect.top + y }
+    }
+    return { x, y }
+  }
+
+  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
+    const view = viewRef.current
+    const hit = doc.elementFromPoint(clientX, clientY)
+    if (hit?.closest('a, img, svg, video, audio, button')) {
+      onParagraphTapRef.current(null)
+      return
+    }
+    const width = doc.defaultView?.innerWidth || 1
+    const ratio = clientX / width
+    if (ratio <= 0.2) {
+      onParagraphTapRef.current(null)
+      void view?.goLeft()
+      return
+    }
+    if (ratio >= 0.8) {
+      onParagraphTapRef.current(null)
+      void view?.goRight()
+      return
+    }
+    const para = paragraphFromPoint(doc, clientX, clientY)
+    if (para && view) {
+      const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
+      const cfi = view.getCFI(index, para.range)
+      const point = toViewport(doc, clientX, clientY)
+      onParagraphTapRef.current({ cfi, quote: para.quote, x: point.x, y: point.y })
+      return
+    }
+    onParagraphTapRef.current(null)
+    onTapCenterRef.current()
+  }
+
+  const suppressNativeUi = (doc: Document) => {
+    doc.addEventListener('contextmenu', (e) => e.preventDefault())
+  }
+
   const emitDocSelection = (doc: Document) => {
     const view = viewRef.current
     if (!view) return
@@ -265,7 +336,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const bindTextSelection = (doc: Document) => {
     if (selectDocs.current.has(doc)) return
     selectDocs.current.add(doc)
-    const state = { timer: 0, x: 0, y: 0, selecting: false }
+    suppressNativeUi(doc)
+    const state = { timer: 0, x: 0, y: 0, t: 0, selecting: false, fromTouch: false }
     doc.addEventListener(
       'touchstart',
       (e) => {
@@ -277,7 +349,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const t = e.touches[0]
         state.x = t.clientX
         state.y = t.clientY
+        state.t = Date.now()
         state.selecting = false
+        state.fromTouch = true
         window.clearTimeout(state.timer)
         state.timer = window.setTimeout(() => {
           state.selecting = true
@@ -310,6 +384,21 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (state.selecting) {
         e.stopPropagation()
         emitDocSelection(doc)
+        state.selecting = false
+        return
+      }
+      if (
+        e.changedTouches.length === 1 &&
+        Date.now() - state.t < 280 &&
+        Date.now() - pinchRef.current.lastAt > 350
+      ) {
+        const t = e.changedTouches[0]
+        const dx = Math.abs(t.clientX - state.x)
+        const dy = Math.abs(t.clientY - state.y)
+        if (dx < 12 && dy < 12) {
+          e.stopPropagation()
+          handleContentTap(doc, t.clientX, t.clientY)
+        }
       }
       state.selecting = false
     }
@@ -317,6 +406,16 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener('touchcancel', endSelect, { capture: true })
     doc.addEventListener('mouseup', () => {
       window.setTimeout(() => emitDocSelection(doc), 0)
+    })
+    doc.addEventListener('click', (ev) => {
+      if (state.fromTouch) {
+        state.fromTouch = false
+        return
+      }
+      if (ev.defaultPrevented) return
+      const sel = doc.getSelection()
+      if (sel && !sel.isCollapsed) return
+      handleContentTap(doc, ev.clientX, ev.clientY)
     })
   }
 
@@ -627,8 +726,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (e.touches.length >= 2) {
         e.preventDefault()
         beginPinch(e.touches)
-      } else if (e.touches.length === 1) {
-        tapRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
       }
     }
 
@@ -641,22 +738,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     const onTouchEnd = (e: TouchEvent) => {
       if (pinchRef.current.active && e.touches.length < 2) endPinch()
-      if (
-        e.changedTouches.length === 1 &&
-        Date.now() - tapRef.current.t < 280 &&
-        Date.now() - pinchRef.current.lastAt > 350
-      ) {
-        const t = e.changedTouches[0]
-        const dx = Math.abs(t.clientX - tapRef.current.x)
-        const dy = Math.abs(t.clientY - tapRef.current.y)
-        if (dx < 12 && dy < 12) {
-          const rect = host.getBoundingClientRect()
-          const x = (t.clientX - rect.left) / rect.width
-          if (x > 0.28 && x < 0.72) onTapCenterRef.current()
-          else if (x <= 0.28) void viewRef.current?.goLeft()
-          else void viewRef.current?.goRight()
-        }
-      }
     }
 
     const onWheel = (e: WheelEvent) => {

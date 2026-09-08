@@ -1,24 +1,28 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { exportLibraryBackup, importAnnotationsFromBook, importLibraryBackup, isBackupPayload } from '../backup/backup'
-import { db, saveSettings } from '../db'
+import { db, saveSettings, withSettingsDefaults } from '../db'
 import { loadBookFile, writeTextBackup } from '../native/files'
 import { shareFile } from '../native/share'
-import { HIGHLIGHT_COLORS } from '../settings/defaults'
+import { rememberCustomColor } from '../settings/colors'
 import type { WebSearchEngine } from '../types/models'
+import { ColorRow } from '../reader/ColorRow'
+import { APP_NAME, APP_VERSION } from '../version'
 
 interface Props {
   onBack: () => void
 }
 
 export function SettingsPage({ onBack }: Props) {
-  const settings = useLiveQuery(() => db.settings.get('global'))
+  const settingsLive = useLiveQuery(() => db.settings.get('global'))
+  const settings = withSettingsDefaults(settingsLive)
   const books = useLiveQuery(() => db.books.toArray()) ?? []
   const [msg, setMsg] = useState('')
   const [fromId, setFromId] = useState('')
   const [toId, setToId] = useState('')
+  const [wheelOpen, setWheelOpen] = useState(false)
 
-  if (!settings) return <div className="centered">Loading…</div>
+  if (settingsLive === undefined) return <div className="centered">Loading…</div>
 
   return (
     <div className="settings">
@@ -60,19 +64,24 @@ export function SettingsPage({ onBack }: Props) {
           Regular-expression search
         </label>
         <p className="field-label">Default highlight color</p>
-        <div className="color-row compact">
-          {HIGHLIGHT_COLORS.map((c) => (
-            <button
-              key={c}
-              className={`swatch ${settings.display.defaultAnnotationColor === c ? 'active' : ''}`}
-              style={{ background: c }}
-              aria-label={`Default highlight ${c}`}
-              onClick={() =>
-                void saveSettings({ display: { ...settings.display, defaultAnnotationColor: c } })
-              }
-            />
-          ))}
-        </div>
+        <ColorRow
+          color={settings.display.defaultAnnotationColor}
+          customColors={settings.display.customHighlightColors}
+          wheelOpen={wheelOpen}
+          onToggleWheel={() => setWheelOpen((v) => !v)}
+          onPick={(c) =>
+            void saveSettings({ display: { ...settings.display, defaultAnnotationColor: c } })
+          }
+          onWheelCommit={(c) =>
+            void saveSettings({
+              display: {
+                ...settings.display,
+                defaultAnnotationColor: c,
+                customHighlightColors: rememberCustomColor(settings.display.customHighlightColors, c),
+              },
+            })
+          }
+        />
       </section>
 
       <section>
@@ -99,7 +108,7 @@ export function SettingsPage({ onBack }: Props) {
             className="chip active"
             onClick={async () => {
               const payload = await exportLibraryBackup()
-              await writeTextBackup(`epub-reader-backup-${Date.now()}.json`, JSON.stringify(payload))
+              await writeTextBackup(`loreguard-backup-${Date.now()}.json`, JSON.stringify(payload))
               setMsg('Backup saved')
             }}
           >
@@ -198,6 +207,10 @@ export function SettingsPage({ onBack }: Props) {
       )}
 
       {msg && <p className="ok">{msg}</p>}
+
+      <p className="muted version-line">
+        {APP_NAME} {APP_VERSION}
+      </p>
     </div>
   )
 }

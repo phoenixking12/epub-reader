@@ -24,6 +24,8 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       touch-action: manipulation;
       -webkit-user-select: text;
       user-select: text;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent;
       ${writing}
     }
     body {
@@ -34,7 +36,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       touch-action: manipulation;
       -webkit-user-select: text;
       user-select: text;
-      -webkit-touch-callout: none;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+    * {
+      -webkit-touch-callout: none !important;
     }
     p, li, blockquote, dd, div, section, article, aside, td, th, span {
       font-size: inherit !important;

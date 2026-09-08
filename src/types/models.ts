@@ -37,6 +37,8 @@ export interface DisplaySettings {
   hyphenate: boolean
   flow: ReaderFlow
   brightness: number
+  brightnessMode: 'auto' | 'manual'
+  customHighlightColors: string[]
   writingMode: 'auto' | 'horizontal-tb' | 'vertical-rl' | 'vertical-lr'
   customCss: string
   footnotePosition: FootnotePosition

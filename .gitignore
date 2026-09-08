@@ -16,5 +16,5 @@ android/*.aab
 android/.idea
 keystore.jks
 *.jks
-.env
+dist-apk
 scripts/verify-output

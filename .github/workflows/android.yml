@@ -47,7 +47,7 @@ jobs:
           ./gradlew assembleDebug
       - uses: actions/upload-artifact@v5
         with:
-          name: epub-reader-debug
+          name: loreguard-debug
           path: android/app/build/outputs/apk/debug/*.apk
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')

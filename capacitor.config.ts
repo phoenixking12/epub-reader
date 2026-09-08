@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.epubreader.app',
-  appName: 'EPUB Reader',
+  appName: 'LoreGuard',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

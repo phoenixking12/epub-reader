@@ -23,6 +23,8 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   hyphenate: true,
   flow: 'paginated',
   brightness: 1,
+  brightnessMode: 'auto',
+  customHighlightColors: [],
   writingMode: 'auto',
   customCss: '',
   footnotePosition: 'popup',
