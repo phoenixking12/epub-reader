@@ -2,6 +2,12 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.0.1 — 2026-09-09
+
+### Fixed
+
+- Android APK build: drop TextView-only selection APIs that WebView does not have
+
 ## 3.0.0 — 2026-09-09
 
 ### Added

@@ -1,13 +1,9 @@
 package com.epubreader.app;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.KeyEvent;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.webkit.WebView;
 
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -36,36 +32,7 @@ public class MainActivity extends BridgeActivity {
             return insets;
         });
         ViewCompat.requestApplyInsets(webView);
-        suppressNativeSelectionUi(webView);
-    }
-
-    private void suppressNativeSelectionUi(View webView) {
-        if (!(webView instanceof WebView)) return;
-        WebView wv = (WebView) webView;
-        ActionMode.Callback empty = new ActionMode.Callback() {
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                return false;
-            }
-
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return false;
-            }
-
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                return false;
-            }
-
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {}
-        };
-        wv.setCustomSelectionActionModeCallback(empty);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            wv.setCustomInsertionActionModeCallback(empty);
-        }
-        wv.setOnLongClickListener(v -> true);
+        webView.setOnLongClickListener(v -> true);
     }
 
     @Override
