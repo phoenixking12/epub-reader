@@ -1,5 +1,6 @@
 import { THEMES } from '../settings/defaults'
 import type { DisplaySettings } from '../types/models'
+import { collectDocumentFontFaces } from './fontFaces'
 
 export function themeColors(settings: DisplaySettings) {
   if (settings.theme === 'custom') {
@@ -14,13 +15,16 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   const writing =
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
+  const faces = collectDocumentFontFaces()
 
   return `
     @namespace epub "http://www.idpf.org/2007/ops";
+    ${faces}
     html {
       background: ${bg} !important;
       color: ${fg} !important;
       font-size: ${settings.fontSize}px !important;
+      font-family: ${settings.fontFamily} !important;
       touch-action: manipulation;
       -webkit-user-select: text;
       user-select: text;
@@ -42,42 +46,95 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     * {
       -webkit-touch-callout: none !important;
     }
-    p, h1, h2, h3, h4, h5, h6, li, blockquote {
-      position: relative;
+    body, p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, div, section, article, aside, td, th, span, a {
+      font-family: ${settings.fontFamily} !important;
     }
-    html.lg-show-marks body {
-      padding-inline-start: 1.6em;
+    p, h1, h2, h3, h4, h5, h6, li, blockquote {
+      position: relative !important;
+    }
+    html.lg-show-marks p,
+    html.lg-show-marks h1,
+    html.lg-show-marks h2,
+    html.lg-show-marks h3,
+    html.lg-show-marks h4,
+    html.lg-show-marks h5,
+    html.lg-show-marks h6,
+    html.lg-show-marks li,
+    html.lg-show-marks blockquote {
+      padding-inline-start: 1.85em !important;
+      overflow: visible !important;
+    }
+    ::highlight(lg-sel) {
+      background-color: color-mix(in srgb, #ea580c 38%, transparent);
+      color: inherit;
     }
     .lg-pmark {
       position: absolute;
-      left: 0;
-      top: 0.15em;
-      width: 22px;
-      height: 22px;
-      transform: translateX(calc(-100% - 6px));
+      left: 2px;
+      top: 0.2em;
+      width: 18px;
+      height: 18px;
       border: 0;
       padding: 0;
       border-radius: 50%;
-      background: color-mix(in srgb, ${fg} 18%, transparent);
-      box-shadow: inset 0 0 0 1.5px ${link};
+      background: ${bg};
+      box-shadow: inset 0 0 0 2px ${link};
       cursor: pointer;
-      z-index: 3;
+      z-index: 4;
+      pointer-events: auto;
     }
     .lg-pmark.on {
       background: ${link};
     }
+    .lg-pmark.on::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: ${bg};
+    }
     .lg-sel-handle {
       position: fixed;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #ea580c;
-      border: 3px solid #fff7ed;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+      width: 28px;
+      height: 44px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
       z-index: 50;
       touch-action: none;
       pointer-events: auto;
     }
+    .lg-sel-handle::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 2px;
+      background: #ea580c;
+      transform: translateX(-50%);
+    }
+    .lg-sel-handle[data-edge="start"]::before {
+      top: 14px;
+      bottom: 0;
+    }
+    .lg-sel-handle[data-edge="end"]::before {
+      top: 0;
+      bottom: 14px;
+    }
+    .lg-sel-handle::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ea580c;
+      border: 2px solid #fff7ed;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+      transform: translateX(-50%);
+    }
+    .lg-sel-handle[data-edge="start"]::after { top: 0; }
+    .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
     p, li, blockquote, dd, div, section, article, aside, td, th, span {
       font-size: inherit !important;
     }
@@ -115,7 +172,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${settings.footnotePosition === 'follow' ? '' : 'display: none;'}
     }
     math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }
-    ${settings.customCss}
   `
 }
 

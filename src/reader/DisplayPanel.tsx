@@ -112,15 +112,6 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               <option value="vertical-lr">Vertical LTR</option>
             </select>
           </label>
-          <label className="field">
-            Extra CSS
-            <textarea
-              rows={3}
-              value={settings.customCss}
-              placeholder="p { letter-spacing: 0.01em; }"
-              onChange={(e) => onChange({ customCss: e.target.value })}
-            />
-          </label>
         </>
       )}
 

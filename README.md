@@ -2,7 +2,7 @@
 
 Offline EPUB 2/3 reader for Android. Books, highlights, bookmarks, and progress stay on the phone.
 
-**Version:** 2.1.0 (build 4)
+**Version:** 3.0.0 (build 5)
 
 ## Add books on Android
 
@@ -38,7 +38,7 @@ These need a connection:
 4. In **Actions**, download **LoreGuard**.
 5. On the phone, open the APK and allow install from that source. If LoreGuard is already installed, this replaces it and keeps your books.
 
-For a versioned file, tag `v2.1.0` and install from **Releases**. See [docs/RELEASE.md](docs/RELEASE.md).
+For a versioned file, tag `v3.0.0` and install from **Releases**. See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Using the reader
 

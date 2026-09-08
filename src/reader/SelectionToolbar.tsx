@@ -5,6 +5,7 @@ import { ColorRow } from './ColorRow'
 interface Props {
   visible: boolean
   quote?: string
+  existing?: boolean
   defaultStyle?: AnnotationStyle
   defaultColor: string
   customColors?: string[]
@@ -17,6 +18,7 @@ interface Props {
   onShare: () => void
   onCopy: () => void
   onClose: () => void
+  onRemove?: () => void
 }
 
 const STYLES: Array<{ id: AnnotationStyle; label: string; mark: string; className?: string }> = [
@@ -32,6 +34,7 @@ const STYLES: Array<{ id: AnnotationStyle; label: string; mark: string; classNam
 export function SelectionToolbar({
   visible,
   quote,
+  existing = false,
   defaultStyle = 'highlight',
   defaultColor,
   customColors = [],
@@ -44,6 +47,7 @@ export function SelectionToolbar({
   onShare,
   onCopy,
   onClose,
+  onRemove,
 }: Props) {
   const [color, setColor] = useState(defaultColor)
   const [style, setStyle] = useState<AnnotationStyle>(defaultStyle)
@@ -135,6 +139,11 @@ export function SelectionToolbar({
         <button className="sel-btn ghost" onClick={onClose} aria-label="Close">
           ✕
         </button>
+        {existing && onRemove ? (
+          <button className="sel-btn ghost" onClick={onRemove}>
+            Remove
+          </button>
+        ) : null}
         <button className="sel-btn" onClick={onNote}>
           Note
         </button>

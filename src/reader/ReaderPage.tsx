@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { db, getSettings, saveSettings, withSettingsDefaults } from '../db'
 import { FoliateHost, type FoliateHandle, type SelectionInfo } from '../engine/FoliateHost'
 import { themeColors } from '../engine/css'
@@ -13,6 +13,7 @@ import { BookmarkNameSheet } from './BookmarkNameSheet'
 import { DisplayPanel, type DisplaySection } from './DisplayPanel'
 import { Drawer, type DrawerMode, type DrawerTab } from './Drawer'
 import { ImageLightbox } from './ImageLightbox'
+import { formatCornerProgress } from './progress'
 import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -34,7 +35,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const display = settingsRow.display
   const file = useBookFile(book?.fileKey)
   const host = useRef<FoliateHandle>(null)
+  const topRef = useRef<HTMLElement>(null)
   const [chrome, setChrome] = useState(false)
+  const [chromeH, setChromeH] = useState(0)
+  const [marksOn, setMarksOn] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('nav')
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('toc')
@@ -55,7 +59,9 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [toc, setToc] = useState<TocNode[]>([])
   const [hasMedia, setHasMedia] = useState(false)
   const [frac, setFrac] = useState(0)
+  const [chapterFrac, setChapterFrac] = useState(0)
   const [loc, setLoc] = useState('')
+  const [pageInfo, setPageInfo] = useState({ page: 1, pages: 1, scrolled: false })
   const [noteFor, setNoteFor] = useState<AnnotationRecord | SelectionInfo | null>(null)
   const [noteText, setNoteText] = useState('')
   const saveTimer = useRef(0)
@@ -65,6 +71,30 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const showChrome = chrome && !overlayOpen && !selection
   const pageButtons = display.pageTurnMode === 'buttons'
   const autoBright = display.brightnessMode !== 'manual'
+  const corner = formatCornerProgress({
+    bookFraction: frac,
+    chapterFraction: chapterFrac,
+    page: pageInfo.page,
+    pages: pageInfo.pages,
+    scrolled: pageInfo.scrolled || display.pageTurnMode === 'scroll',
+  })
+  const selectedAnn = selection?.annotationId
+    ? annotations.find((a) => a.id === selection.annotationId)
+    : undefined
+
+  useLayoutEffect(() => {
+    if (!showChrome) {
+      setChromeH(0)
+      return
+    }
+    const el = topRef.current
+    if (!el) return
+    const apply = () => setChromeH(el.getBoundingClientRect().height)
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [showChrome, pageButtons, book?.title, loc])
 
   useEffect(() => {
     if (!settingsRow?.display) return
@@ -169,7 +199,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
   if (!file || settingsLive === undefined) return <div className="centered">Loading book…</div>
 
   return (
-    <div className="reader" style={{ background: colors.bg }}>
+    <div
+      className={`reader ${showChrome ? 'chrome-on' : ''}`}
+      style={{ background: colors.bg, ['--chrome-h' as string]: `${chromeH}px` }}
+    >
       <FoliateHost
         ref={host}
         file={file}
@@ -177,10 +210,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
         settings={settingsRow.display}
         annotations={annotations}
         bookmarks={bookmarks}
-        showParagraphMarks={showChrome}
-        onRelocate={({ cfi, fraction, locLabel }) => {
+        showParagraphMarks={showChrome || marksOn}
+        onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
           setFrac(fraction)
+          setChapterFrac(sectionFraction)
           setLoc(locLabel)
+          setPageInfo({ page, pages, scrolled })
           window.clearTimeout(saveTimer.current)
           saveTimer.current = window.setTimeout(() => {
             void db.books.update(bookId, {
@@ -213,13 +248,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
             })
           }
         }}
-        onShowAnnotation={(cfi) => {
-          const rec = annotations.find((a) => a.cfiRange === cfi)
-          if (rec) {
-            setNoteFor(rec)
-            setNoteText(rec.note)
-          }
-        }}
         onImage={setImage}
         onFootnote={setFootnote}
         onReady={(t, _title, media) => {
@@ -228,10 +256,29 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onTapCenter={() => {
           setMenuOpen(false)
-          setChrome((v) => !v)
+          setChrome((v) => {
+            const next = !v
+            setMarksOn(next)
+            return next
+          })
+        }}
+        onShowMarks={setMarksOn}
+        onIdleTap={() => {
+          setChrome(false)
+          setMenuOpen(false)
+          setMarksOn(false)
         }}
         onFontSizeChange={(size) => void patchDisplay({ fontSize: size })}
       />
+
+      <div
+        className={`reader-progress ${showChrome ? 'on' : ''}`}
+        style={{ color: colors.fg }}
+        aria-hidden
+      >
+        <strong>{corner.primary}</strong>
+        <span>{corner.secondary}</span>
+      </div>
 
       <div
         className="brightness-veil"
@@ -239,7 +286,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
       />
 
       {showChrome && (
-        <header className="reader-top">
+        <header className="reader-top" ref={topRef}>
           <button
             className="icon-btn chrome-btn"
             aria-label="Library and contents"
@@ -259,7 +306,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
           )}
           <div className="reader-title">
             <strong>{book.title}</strong>
-            <span>{loc || `${Math.round(frac * 100)}%`}</span>
+            <span>{loc || corner.primary}</span>
           </div>
           {pageButtons && (
             <button className="icon-btn chrome-btn turn-btn" onClick={() => host.current?.goRight()} aria-label="Next page">
@@ -377,27 +424,36 @@ export function ReaderPage({ bookId, onBack }: Props) {
       <SelectionToolbar
         visible={Boolean(selection) && !noteFor}
         quote={selection?.text}
-        defaultStyle={settingsRow.display.defaultAnnotationStyle}
-        defaultColor={settingsRow.display.defaultAnnotationColor}
+        existing={Boolean(selectedAnn)}
+        defaultStyle={selectedAnn?.style ?? settingsRow.display.defaultAnnotationStyle}
+        defaultColor={selectedAnn?.color ?? settingsRow.display.defaultAnnotationColor}
         customColors={settingsRow.display.customHighlightColors}
         searchEngine={settingsRow.webSearchEngine}
         anchor={selection?.rect}
         onHighlight={(style, color) => {
           if (!selection) return
-          void addAnnotation(selection, style, color)
-          void saveSettings({
-            display: {
-              ...settingsRow.display,
-              defaultAnnotationStyle: style,
-              defaultAnnotationColor: color,
-              customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
-            },
-          })
-          host.current?.deselect()
-          setSelection(null)
-          setChrome(true)
+          void (async () => {
+            if (selectedAnn) await db.annotations.update(selectedAnn.id, { style, color })
+            else await addAnnotation(selection, style, color)
+            await saveSettings({
+              display: {
+                ...settingsRow.display,
+                defaultAnnotationStyle: style,
+                defaultAnnotationColor: color,
+                customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
+              },
+            })
+            host.current?.deselect()
+            setSelection(null)
+            setChrome(true)
+          })()
         }}
         onNote={() => {
+          if (selectedAnn) {
+            setNoteFor(selectedAnn)
+            setNoteText(selectedAnn.note)
+            return
+          }
           if (selection) {
             setNoteFor(selection)
             setNoteText('')
@@ -425,6 +481,16 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onCopy={() => {
           if (selection) void navigator.clipboard.writeText(selection.text)
         }}
+        onRemove={
+          selectedAnn
+            ? () => {
+                void db.annotations.delete(selectedAnn.id)
+                host.current?.deselect()
+                setSelection(null)
+                setChrome(true)
+              }
+            : undefined
+        }
         onClose={() => {
           host.current?.deselect()
           setSelection(null)
@@ -501,8 +567,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
               Save
             </button>
           </header>
-          <p className="selection-quote">{'quote' in noteFor ? noteFor.quote : noteFor.text}</p>
-          <textarea rows={6} value={noteText} onChange={(e) => setNoteText(e.target.value)} autoFocus />
+          <textarea rows={6} value={noteText} onChange={(e) => setNoteText(e.target.value)} autoFocus placeholder="Write a note" />
         </div>
       )}
     </div>

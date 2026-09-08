@@ -2,6 +2,26 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.0.0 — 2026-09-09
+
+### Added
+
+- Corner progress: book and chapter percent while scrolling; chapter page `n / N` in page modes
+- Tap an existing highlight to select it, then change style/color or remove it
+- Paragraph bookmark dots stay inside the page; a single tap on a paragraph shows them
+- Double-tap shows the reading bar; a tap on a highlight selects the whole mark
+- Slim vertical-bar selection handles replace the system (Google) ones
+
+### Changed
+
+- The reading bar pushes the page down instead of covering the first lines
+- The last page/chapter no longer wraps back to the start
+- Notes no longer repeat the highlighted quote
+- Typeface changes apply inside the book iframe
+- Extra CSS was removed from Text settings
+- Android versionCode 5 so this APK updates the 2.1 install
+- System-bar padding so Library, Close, and sheet buttons stay on screen
+
 ## 2.1.0 — 2026-09-08
 
 ### Added

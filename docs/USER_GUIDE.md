@@ -10,7 +10,7 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 
 ## Reading chrome
 
-Tap the page to show or hide the bar.
+**Double-tap** the page to show or hide the bar.
 
 You get **two** icon buttons and the title in the middle:
 
@@ -18,6 +18,10 @@ You get **two** icon buttons and the title in the middle:
 - **⋮** — Notes, Text, Display, Color, find, bookmark this page
 
 If **Display → Buttons** is on, previous/next page buttons appear as well (**four** buttons total).
+
+The page shifts down so the bar does not cover the first lines.
+
+The corner shows **book and chapter percent** while you scroll, or **chapter page n / N** in page modes.
 
 ## Turn pages
 
@@ -32,16 +36,17 @@ In **Menu → Display → Turn pages**:
 
 ## Bookmarks
 
-When the bar is visible, a bookmark dot sits beside each paragraph. Tap it, name the bookmark, and find it under **Library → Bookmarks**.
+**Single-tap a paragraph** to show bookmark dots beside the text. Tap a dot, name the bookmark, and find it under **Library → Bookmarks**.
 
 **Bookmark this page** in Menu saves the current place.
 
 ## Highlights and notes
 
 1. Long-press a word, then drag the orange handles to set the start and end.
-2. The tool panel appears **under** the selection.
-3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once. The tool panel sits above the selection.
-4. **Note** attaches text. **Menu → Notes** lists only notes you wrote, with the quoted place — not every highlight.
+2. The tool panel appears **above** the selection.
+3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once.
+4. Tap an existing mark to select the whole span, then change its color/style or **Remove**.
+5. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
 
 ## Brightness
 
@@ -51,7 +56,9 @@ When the bar is visible, a bookmark dot sits beside each paragraph. Tap it, name
 
 | Gesture | Result |
 | --- | --- |
-| Tap | Show or hide Library and Menu |
+| Double-tap | Show or hide Library and Menu |
+| Single-tap a paragraph | Show bookmark dots |
+| Single-tap a highlight | Select the whole mark |
 | Swipe (in Swipe mode) | Turn the page |
 | Long-press then drag handles | Select text |
 | Pinch | Change type size |

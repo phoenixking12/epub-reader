@@ -15,6 +15,7 @@ export interface SelectionInfo {
   text: string
   index: number
   rect: { left: number; top: number; right: number; bottom: number }
+  annotationId?: string
 }
 
 export interface ImageInfo {
@@ -30,7 +31,11 @@ export interface FootnoteInfo {
 export interface RelocateInfo {
   cfi: string
   fraction: number
+  sectionFraction: number
   locLabel: string
+  page: number
+  pages: number
+  scrolled: boolean
 }
 
 export interface SearchHit {
@@ -70,12 +75,13 @@ interface Props {
   showParagraphMarks?: boolean
   onRelocate: (info: RelocateInfo) => void
   onSelection: (sel: SelectionInfo | null) => void
-  onShowAnnotation: (cfi: string) => void
   onImage: (img: ImageInfo) => void
   onFootnote: (note: FootnoteInfo | null) => void
   onReady?: (toc: unknown, title: string, hasMedia: boolean) => void
   onTapCenter: () => void
   onParagraphTap: (info: ParagraphTapInfo | null) => void
+  onShowMarks?: (visible: boolean) => void
+  onIdleTap?: () => void
   onFontSizeChange: (size: number) => void
 }
 
@@ -110,9 +116,10 @@ function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) 
         : rec.style === 'italic'
           ? `font-style: italic;`
           : ''
-  if (extra) {
-    styleEl.textContent += `::highlight(${name}) { ${extra} }\n`
-  }
+  const start = `::highlight(${name})`
+  const lines = (styleEl.textContent || '').split('\n').filter((line) => !line.includes(start))
+  if (extra) lines.push(`${start} { ${extra} }`)
+  styleEl.textContent = `${lines.filter(Boolean).join('\n')}\n`
 }
 
 export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost(
@@ -125,12 +132,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     showParagraphMarks = false,
     onRelocate,
     onSelection,
-    onShowAnnotation,
     onImage,
     onFootnote,
     onReady,
     onTapCenter,
     onParagraphTap,
+    onShowMarks,
+    onIdleTap,
     onFontSizeChange,
   },
   ref,
@@ -145,15 +153,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const badgeRef = useRef<HTMLDivElement>(null)
   const pinchDocs = useRef(new WeakSet<Document>())
   const selectDocs = useRef(new WeakSet<Document>())
+  const prevAnnRef = useRef<AnnotationRecord[]>([])
   const onRelocateRef = useRef(onRelocate)
   const onSelectionRef = useRef(onSelection)
-  const onShowAnnotationRef = useRef(onShowAnnotation)
   const onImageRef = useRef(onImage)
   const onFootnoteRef = useRef(onFootnote)
   const onTapCenterRef = useRef(onTapCenter)
   const onParagraphTapRef = useRef(onParagraphTap)
+  const onShowMarksRef = useRef(onShowMarks)
+  const onIdleTapRef = useRef(onIdleTap)
   const onReadyRef = useRef(onReady)
   const onFontSizeRef = useRef(onFontSizeChange)
+  const savedRanges = useRef(new WeakMap<Document, Range>())
+  const hidingNative = useRef(new WeakSet<Document>())
+  const tapRef = useRef({ t: 0, x: 0, y: 0, timer: 0 })
 
   settingsRef.current = settings
   annotationsRef.current = annotations
@@ -161,11 +174,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   showMarksRef.current = showParagraphMarks
   onRelocateRef.current = onRelocate
   onSelectionRef.current = onSelection
-  onShowAnnotationRef.current = onShowAnnotation
   onImageRef.current = onImage
   onFootnoteRef.current = onFootnote
   onTapCenterRef.current = onTapCenter
   onParagraphTapRef.current = onParagraphTap
+  onShowMarksRef.current = onShowMarks
+  onIdleTapRef.current = onIdleTap
   onReadyRef.current = onReady
   onFontSizeRef.current = onFontSizeChange
 
@@ -290,7 +304,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
-  const selectionFromDoc = (doc: Document): SelectionInfo | null => {
+  const selectionFromDoc = (doc: Document, overlayCfi?: string): SelectionInfo | null => {
     const view = viewRef.current
     if (!view) return null
     const sel = doc.getSelection()
@@ -301,10 +315,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
     const box = rangeBox(range)
     const origin = toViewport(doc, 0, 0)
+    const cfi = overlayCfi || view.getCFI(index, range)
+    const rec = annotationsRef.current.find((a) => a.cfiRange === cfi)
     return {
-      cfi: view.getCFI(index, range),
+      cfi,
       text,
       index,
+      annotationId: rec?.id,
       rect: {
         left: origin.x + box.left,
         top: origin.y + box.top,
@@ -314,8 +331,62 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
+  const hitAnnotation = (doc: Document, x: number, y: number) => {
+    const view = viewRef.current
+    if (!view?.renderer) return null
+    const part = view.renderer.getContents().find((c) => c.doc === doc)
+    const overlayer = part?.overlayer as
+      | { hitTest?: (pt: { x: number; y: number }) => [string?, Range?] }
+      | undefined
+    if (!overlayer?.hitTest) return null
+    const [value, range] = overlayer.hitTest({ x, y })
+    if (!value || value.startsWith('foliate-search:') || !range) return null
+    return { value, range }
+  }
+
+  const clearSelHighlight = (doc: Document) => {
+    const highlights = doc.defaultView?.CSS?.highlights
+    highlights?.delete('lg-sel')
+  }
+
+  const paintSelHighlight = (doc: Document, range: Range) => {
+    const Win = doc.defaultView
+    if (!Win?.Highlight || !Win.CSS?.highlights) return false
+    try {
+      Win.CSS.highlights.set('lg-sel', new Win.Highlight(range))
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const hideNativeSelection = (doc: Document) => {
+    const sel = doc.getSelection()
+    if (!sel) return
+    hidingNative.current.add(doc)
+    sel.removeAllRanges()
+    window.setTimeout(() => hidingNative.current.delete(doc), 0)
+  }
+
+  const restoreSavedRange = (doc: Document) => {
+    const saved = savedRanges.current.get(doc)
+    const sel = doc.getSelection()
+    if (!saved || !sel) return sel
+    try {
+      hidingNative.current.add(doc)
+      sel.removeAllRanges()
+      sel.addRange(saved.cloneRange())
+    } catch {
+      /* range detached */
+    }
+    window.setTimeout(() => hidingNative.current.delete(doc), 0)
+    return sel
+  }
+
   const clearHandles = (doc: Document) => {
     doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
+    savedRanges.current.delete(doc)
+    clearSelHighlight(doc)
   }
 
   const paintParagraphMarks = () => {
@@ -359,19 +430,60 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
   const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
     const hit = doc.elementFromPoint(clientX, clientY)
-    if (hit?.closest('a, img, svg, video, audio, button, .lg-pmark, .lg-sel-handle')) {
+    if (hit?.closest('a, img, video, audio, button, .lg-pmark, .lg-sel-handle')) {
       return
     }
-    onParagraphTapRef.current(null)
-    onTapCenterRef.current()
+    const existing = hitAnnotation(doc, clientX, clientY)
+    const now = Date.now()
+    const prev = tapRef.current
+    const isDouble = now - prev.t < 300 && Math.hypot(clientX - prev.x, clientY - prev.y) < 28
+    window.clearTimeout(prev.timer)
+
+    if (isDouble) {
+      prev.t = 0
+      prev.timer = 0
+      onTapCenterRef.current()
+      return
+    }
+
+    prev.t = now
+    prev.x = clientX
+    prev.y = clientY
+
+    if (existing) {
+      prev.t = 0
+      const sel = doc.getSelection()
+      sel?.removeAllRanges()
+      try {
+        sel?.addRange(existing.range.cloneRange())
+      } catch {
+        sel?.addRange(existing.range)
+      }
+      emitDocSelection(doc, existing.value)
+      return
+    }
+
+    prev.timer = window.setTimeout(() => {
+      const block = hit?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+      if (block) {
+        showMarksRef.current = true
+        paintParagraphMarks()
+        onShowMarksRef.current?.(true)
+        return
+      }
+      showMarksRef.current = false
+      paintParagraphMarks()
+      onShowMarksRef.current?.(false)
+      onIdleTapRef.current?.()
+    }, 300)
   }
 
   const suppressNativeUi = (doc: Document) => {
     doc.addEventListener('contextmenu', (e) => e.preventDefault())
   }
 
-  const emitDocSelection = (doc: Document) => {
-    const info = selectionFromDoc(doc)
+  const emitDocSelection = (doc: Document, overlayCfi?: string, keepNative = false) => {
+    const info = selectionFromDoc(doc, overlayCfi)
     const sel = doc.getSelection()
     if (!info || !sel?.rangeCount) {
       clearHandles(doc)
@@ -380,6 +492,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
     const range = sel.getRangeAt(0)
     const box = rangeBox(range)
+    savedRanges.current.set(doc, range.cloneRange())
+    const painted = paintSelHighlight(doc, range)
     const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
       let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
       if (!el) {
@@ -388,12 +502,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         el.dataset.edge = edge
         doc.body.append(el)
       }
-      el.style.left = `${x - 18}px`
-      el.style.top = `${y - 10}px`
+      el.style.left = `${x - 14}px`
+      el.style.top = `${y}px`
     }
-    placeHandle('start', box.start.left, box.start.bottom)
-    placeHandle('end', box.end.right, box.end.bottom)
+    placeHandle('start', box.start.left, box.start.top - 14)
+    placeHandle('end', box.end.right, box.end.bottom - 30)
     onSelectionRef.current(info)
+    if (!keepNative && painted) hideNativeSelection(doc)
   }
 
   const bindTextSelection = (doc: Document) => {
@@ -441,7 +556,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (handleEl) {
           e.preventDefault()
           e.stopPropagation()
-          const sel = doc.getSelection()
+          const sel = restoreSavedRange(doc) ?? doc.getSelection()
           if (!sel?.rangeCount) return
           const range = sel.getRangeAt(0)
           state.handle = handleEl.dataset.edge === 'start' ? 'start' : 'end'
@@ -480,7 +595,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           e.preventDefault()
           e.stopPropagation()
           const point = rangeFromPoint(doc, t.clientX, t.clientY)
-          const sel = doc.getSelection()
+          const sel = restoreSavedRange(doc) ?? doc.getSelection()
           if (!point || !sel) return
           try {
             sel.setBaseAndExtent(state.anchorNode, state.anchorOffset, point.startContainer, point.startOffset)
@@ -617,8 +732,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const view = viewRef.current
       if (!view) return null
       for (const { doc } of view.renderer.getContents()) {
+        restoreSavedRange(doc)
         const info = selectionFromDoc(doc)
-        if (info) return info
+        if (info) {
+          hideNativeSelection(doc)
+          return info
+        }
       }
       return null
     },
@@ -627,7 +746,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       view?.deselect()
       if (!view?.renderer) return
       for (const { doc } of view.renderer.getContents()) {
-        if (doc) clearHandles(doc)
+        if (!doc) continue
+        clearHandles(doc)
+        doc.getSelection()?.removeAllRanges()
       }
     },
     search: async (query, regex) => {
@@ -697,8 +818,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const onLoad = (e: Event) => {
       const { doc } = (e as CustomEvent).detail as { doc: Document; index: number }
       doc.addEventListener('selectionchange', () => {
+        if (hidingNative.current.has(doc)) return
         const sel = doc.getSelection()
         if (!sel || sel.isCollapsed) {
+          if (savedRanges.current.has(doc)) return
           clearHandles(doc)
           onSelectionRef.current(null)
           return
@@ -724,12 +847,35 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         cfi?: string
         fraction?: number
         tocItem?: { label?: string }
-        location?: [number, number]
+      }
+      const renderer = view.renderer as HTMLElement & {
+        scrolled?: boolean
+        start?: number
+        viewSize?: number
+        page?: number
+        pages?: number
+      }
+      const scrolled = Boolean(renderer?.scrolled)
+      let sectionFraction = 0
+      let page = 1
+      let pages = 1
+      if (scrolled) {
+        const size = renderer.viewSize || 1
+        sectionFraction = Math.min(1, Math.max(0, (renderer.start ?? 0) / size))
+      } else if (renderer) {
+        const textPages = Math.max(1, (renderer.pages ?? 3) - 2)
+        page = Math.min(textPages, Math.max(1, (renderer.page ?? 1) - 1))
+        pages = textPages
+        sectionFraction = pages > 1 ? (page - 1) / (pages - 1) : 1
       }
       onRelocateRef.current({
         cfi: d.cfi ?? '',
         fraction: d.fraction ?? 0,
+        sectionFraction,
         locLabel: d.tocItem?.label || '',
+        page,
+        pages,
+        scrolled,
       })
       window.setTimeout(() => paintParagraphMarks(), 0)
     }
@@ -747,14 +893,28 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       const rec = annotationsRef.current.find((a) => a.cfiRange === annotation.value)
       if (!rec) return
-      const [fn, opts] = drawAnnotation(rec.style, rec.color)
-      if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') draw(fn, opts)
+      if (rec.style === 'textColor' || rec.style === 'bold' || rec.style === 'italic') {
+        draw(Overlayer.highlight, { color: 'rgba(0,0,0,0)' })
+      } else {
+        const [fn, opts] = drawAnnotation(rec.style, rec.color)
+        draw(fn, opts)
+      }
       applyTextHighlight(doc, range, rec)
     }
 
     const onShow = (e: Event) => {
-      const { value } = (e as CustomEvent).detail as { value: string }
-      onShowAnnotationRef.current(value)
+      const { value, range } = (e as CustomEvent).detail as { value: string; range?: Range }
+      if (!range) return
+      const owner = range.startContainer.ownerDocument
+      if (!owner) return
+      const sel = owner.getSelection()
+      sel?.removeAllRanges()
+      try {
+        sel?.addRange(range.cloneRange())
+      } catch {
+        sel?.addRange(range)
+      }
+      emitDocSelection(owner, value)
     }
 
     view.addEventListener('load', onLoad)
@@ -817,6 +977,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       view.close()
       view.remove()
       viewRef.current = null
+      prevAnnRef.current = []
     }
     // file identity is the open trigger
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -829,15 +990,31 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     view.renderer.setStyles?.(buildReaderCSS(settings))
     for (const part of view.renderer.getContents()) {
       part.doc?.documentElement.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
+      part.doc?.documentElement.style.setProperty('font-family', settings.fontFamily, 'important')
+      part.doc?.body?.style.setProperty('font-family', settings.fontFamily, 'important')
     }
   }, [settings])
 
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    const prev = prevAnnRef.current
+    const nextKeys = new Set(annotations.map((a) => a.cfiRange))
+    for (const rec of prev) {
+      if (nextKeys.has(rec.cfiRange)) continue
+      void Promise.resolve(view.deleteAnnotation({ value: rec.cfiRange })).catch(() => undefined)
+      if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(`ann-${rec.id}`)
+      if (view.renderer) {
+        for (const { doc } of view.renderer.getContents()) {
+          const highlights = doc?.defaultView?.CSS?.highlights
+          highlights?.delete(`ann-${rec.id}`)
+        }
+      }
+    }
     for (const rec of annotations) {
       void Promise.resolve(view.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
     }
+    prevAnnRef.current = annotations
   }, [annotations])
 
   useEffect(() => {
@@ -896,7 +1073,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         ref={rootRef}
         className="foliate-host"
         style={{ background: bg }}
-        onClick={(e) => {
+        onDoubleClick={(e) => {
           if ((e.target as HTMLElement).classList.contains('foliate-host')) onTapCenter()
         }}
       />

@@ -40,6 +40,7 @@ img { max-width: 100%; }
 .library, .settings {
   min-height: 100%;
   padding: 20px 20px 120px;
+  padding-bottom: max(120px, env(safe-area-inset-bottom, 0px) + 96px);
   max-width: 960px;
   margin: 0 auto;
 }
@@ -258,8 +259,8 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .fab-row {
   position: fixed;
-  right: 16px;
-  bottom: 20px;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(20px, env(safe-area-inset-bottom, 0px) + 12px);
   z-index: 5;
 }
 .fab.ghost, .chip.ghost {
@@ -285,11 +286,18 @@ select option { background: #1c1917; color: #fafaf9; }
   position: relative;
   overflow: hidden;
   touch-action: pan-x pan-y;
+  --chrome-h: 0px;
+}
+.reader.chrome-on {
+  --chrome-h: 64px;
 }
 .foliate-host {
   position: absolute;
   inset: 0;
   touch-action: pan-x pan-y;
+}
+.reader.chrome-on .foliate-host {
+  top: max(64px, var(--chrome-h));
 }
 .foliate-host foliate-view {
   display: block;
@@ -317,9 +325,11 @@ select option { background: #1c1917; color: #fafaf9; }
 .reader-top {
   top: 0;
   flex-wrap: nowrap;
-  padding-top: max(8px, env(safe-area-inset-top));
-  padding-left: max(6px, env(safe-area-inset-left));
-  padding-right: max(6px, env(safe-area-inset-right));
+  min-height: 56px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 .chrome-btn {
   flex: none;
@@ -376,7 +386,7 @@ select option { background: #1c1917; color: #fafaf9; }
   width: min(78vw, 320px);
   background: #1c1917;
   overflow: auto;
-  padding: 16px 12px 32px;
+  padding: 14px 14px 36px;
   border-right: 1px solid var(--line);
 }
 .drawer-head {
@@ -385,7 +395,19 @@ select option { background: #1c1917; color: #fafaf9; }
   gap: 8px;
   margin-bottom: 10px;
 }
-.drawer-head h2 { flex: 1; margin: 0; }
+.drawer-head h2 {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drawer-head .icon-btn {
+  flex: none;
+  min-height: 40px;
+  padding: 8px 12px;
+}
 .drawer-tabs, .sheet-head {
   display: flex;
   gap: 6px;
@@ -516,8 +538,8 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .reader-menu {
   position: absolute;
-  top: 58px;
-  right: 12px;
+  top: calc(max(64px, var(--chrome-h, 64px)) + 6px);
+  right: 10px;
   z-index: 6;
   display: grid;
   min-width: 200px;
@@ -561,10 +583,20 @@ select option { background: #1c1917; color: #fafaf9; }
   background: #1c1917;
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
-  padding: 10px 14px 20px;
+  padding: 10px 14px 28px;
   border: 1px solid var(--line);
   max-height: 70%;
   overflow: auto;
+}
+.sheet-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.sheet-head .icon-btn {
+  flex: none;
 }
 .selection-pop {
   position: absolute;
@@ -740,6 +772,26 @@ select option { background: #1c1917; color: #fafaf9; }
   border-bottom: 1px solid #57534e;
   padding-bottom: 6px;
 }
+
+.reader-progress {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  z-index: 3;
+  pointer-events: none;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  font-size: 11px;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  opacity: 0.7;
+}
+.reader-progress strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+.reader-progress.on { opacity: 0.95; }
 
 .pinch-badge {
   position: absolute;
