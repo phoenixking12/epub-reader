@@ -9,6 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors, usesPublisherFont } from './css'
+import { isElement, isHtmlElement, isHtmlImage } from './crossRealm'
 import { selectWordAtPoint, unwrapAnnotation, wrapRange } from './annMarks'
 
 export interface SelectionInfo {
@@ -406,7 +407,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
       const visible: HTMLElement[] = []
       for (const block of nodes) {
-        if (!(block instanceof HTMLElement)) continue
+        if (!isHtmlElement(block)) continue
         const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
         if (quote.length < 2) continue
         const range = doc.createRange()
@@ -453,8 +454,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
-  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
-    const hit = doc.elementFromPoint(clientX, clientY)
+  const handleContentTap = (doc: Document, clientX: number, clientY: number, target?: EventTarget | null) => {
+    const fromTarget = isElement(target) ? target : null
+    const hit =
+      fromTarget?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote, a, img, button, .lg-pmark, .lg-sel-handle') ||
+      doc.elementFromPoint(clientX, clientY)
     if (hit?.closest('a, img, video, audio, button, .lg-pmark, .lg-sel-handle')) {
       return
     }
@@ -463,7 +467,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       doc.getSelection()?.removeAllRanges()
       onSelectionRef.current(null)
       viewRef.current?.deselect()
-      return
     }
     const existing = hitAnnotation(doc, clientX, clientY)
     const now = Date.now()
@@ -497,7 +500,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     prev.timer = window.setTimeout(() => {
       const block = hit?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote')
-      if (block instanceof Element) {
+      if (isElement(block)) {
         markFocusRef.current = block
         paintParagraphMarks()
         return
@@ -572,6 +575,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       t: number
       selecting: boolean
       fromTouch: boolean
+      handledTap: boolean
       handle: 'start' | 'end' | null
       anchorNode: Node | null
       anchorOffset: number
@@ -582,6 +586,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       t: 0,
       selecting: false,
       fromTouch: false,
+      handledTap: false,
       handle: null,
       anchorNode: null,
       anchorOffset: 0,
@@ -698,7 +703,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           const target = e.target as HTMLElement | null
           if (target?.closest?.('.lg-pmark, a, button')) return
           e.stopPropagation()
-          handleContentTap(doc, t.clientX, t.clientY)
+          state.handledTap = true
+          handleContentTap(doc, t.clientX, t.clientY, e.target)
         }
       }
       state.selecting = false
@@ -707,14 +713,16 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
     doc.addEventListener('click', (ev) => {
-      if (state.fromTouch) {
+      if (ev.defaultPrevented) return
+      if (state.handledTap) {
+        state.handledTap = false
         state.fromTouch = false
         return
       }
-      if (ev.defaultPrevented) return
+      state.fromTouch = false
       const sel = doc.getSelection()
-      if (sel && !sel.isCollapsed) return
-      handleContentTap(doc, ev.clientX, ev.clientY)
+      if (sel && !sel.isCollapsed && savedRanges.current.has(doc)) return
+      handleContentTap(doc, ev.clientX, ev.clientY, ev.target)
     })
   }
 
@@ -884,8 +892,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         emitDocSelection(doc)
       })
       doc.addEventListener('click', (ev) => {
-        const img = (ev.target as HTMLElement | null)?.closest?.('img')
-        if (img instanceof HTMLImageElement) {
+        const img = isElement(ev.target) ? ev.target.closest('img') : null
+        if (isHtmlImage(img)) {
           ev.preventDefault()
           ev.stopPropagation()
           onImageRef.current({ src: img.src, alt: img.alt || img.title || '' })

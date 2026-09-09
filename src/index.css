@@ -296,7 +296,7 @@ select option { background: #1c1917; color: #fafaf9; }
   --chrome-h: 0px;
 }
 .reader.chrome-on {
-  --chrome-h: 64px;
+  --chrome-h: calc(var(--lg-sat, 0px) + 64px);
 }
 .foliate-host {
   position: absolute;
@@ -305,7 +305,7 @@ select option { background: #1c1917; color: #fafaf9; }
   touch-action: pan-x pan-y;
 }
 .reader.chrome-on .foliate-host {
-  top: max(64px, var(--chrome-h));
+  top: var(--chrome-h);
 }
 .foliate-host foliate-view {
   display: block;
@@ -549,7 +549,7 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .reader-menu {
   position: absolute;
-  top: calc(max(64px, var(--chrome-h, 64px)) + 6px);
+  top: calc(var(--chrome-h, 64px) + 6px);
   right: 10px;
   z-index: 6;
   display: grid;

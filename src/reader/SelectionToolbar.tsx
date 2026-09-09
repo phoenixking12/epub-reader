@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
+import { HIGHLIGHT_COLORS, TEXT_COLORS, colorForStyle } from '../settings/defaults'
 import { ColorRow } from './ColorRow'
 
 interface Props {
@@ -91,9 +92,10 @@ export function SelectionToolbar({
   if (!visible) return null
 
   const apply = (nextStyle: AnnotationStyle, nextColor = color) => {
+    const ink = colorForStyle(nextStyle, nextColor)
     setStyle(nextStyle)
-    setColor(nextColor)
-    onHighlight(nextStyle, nextColor)
+    setColor(ink)
+    onHighlight(nextStyle, ink)
   }
 
   return (
@@ -120,6 +122,7 @@ export function SelectionToolbar({
       </div>
       <ColorRow
         color={color}
+        colors={style === 'textColor' ? [...TEXT_COLORS] : [...HIGHLIGHT_COLORS]}
         customColors={customColors}
         wheelOpen={wheelOpen}
         onToggleWheel={() => {

@@ -71,6 +71,24 @@ export const HIGHLIGHT_COLORS = [
   '#e7e5e4',
 ]
 
+export const TEXT_COLORS = [
+  '#b91c1c',
+  '#c2410c',
+  '#a16207',
+  '#15803d',
+  '#1d4ed8',
+  '#6d28d9',
+  '#be185d',
+  '#0f172a',
+]
+
+export function colorForStyle(style: DisplaySettings['defaultAnnotationStyle'], color: string) {
+  if (style !== 'textColor') return color
+  if (TEXT_COLORS.includes(color as (typeof TEXT_COLORS)[number])) return color
+  if (HIGHLIGHT_COLORS.includes(color as (typeof HIGHLIGHT_COLORS)[number])) return TEXT_COLORS[0]
+  return color
+}
+
 export const DEFAULT_SETTINGS: SettingsRecord = {
   id: 'global',
   display: DEFAULT_DISPLAY,

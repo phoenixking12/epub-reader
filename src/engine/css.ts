@@ -21,8 +21,16 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
   const faces = collectDocumentFontFaces()
+  const headingFallback = publisher
+    ? `
+    :where(h1) { font-size: 1.75em; font-weight: 700; }
+    :where(h2) { font-size: 1.45em; font-weight: 700; }
+    :where(h3) { font-size: 1.25em; font-weight: 600; }
+    :where(h4), :where(h5), :where(h6) { font-size: 1.12em; font-weight: 600; }
+    `
+    : ''
   const fontOverride = publisher
-    ? ''
+    ? headingFallback
     : `
     html, body {
       font-family: ${settings.fontFamily} !important;

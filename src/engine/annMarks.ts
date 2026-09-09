@@ -13,7 +13,7 @@ export function unwrapAnnotation(doc: Document, id: string) {
     if (!parent) continue
     while (el.firstChild) parent.insertBefore(el.firstChild, el)
     parent.removeChild(el)
-    if (parent instanceof HTMLElement) parent.normalize()
+    parent.normalize()
   }
 }
 
