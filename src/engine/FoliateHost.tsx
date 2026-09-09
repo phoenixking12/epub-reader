@@ -757,13 +757,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener(
       'wheel',
       (e) => {
-        if (!e.ctrlKey && !e.metaKey) return
-        e.preventDefault()
-        const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
-        settingsRef.current = { ...settingsRef.current, fontSize: next }
-        applyLiveFont(next)
-        onFontSizeRef.current(next)
-        window.setTimeout(() => showPinchBadge(next, false), 700)
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
+          settingsRef.current = { ...settingsRef.current, fontSize: next }
+          applyLiveFont(next)
+          onFontSizeRef.current(next)
+          window.setTimeout(() => showPinchBadge(next, false), 700)
+          return
+        }
+        if (settingsRef.current.pageTurnMode === 'scroll') {
+          e.preventDefault()
+          viewRef.current?.renderer?.pan?.(0, e.deltaY)
+        }
       },
       opts,
     )
@@ -1133,13 +1139,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return
-      e.preventDefault()
-      const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
-      settingsRef.current = { ...settingsRef.current, fontSize: next }
-      applyLiveFont(next)
-      onFontSizeRef.current(next)
-      window.setTimeout(() => showPinchBadge(next, false), 700)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
+        settingsRef.current = { ...settingsRef.current, fontSize: next }
+        applyLiveFont(next)
+        onFontSizeRef.current(next)
+        window.setTimeout(() => showPinchBadge(next, false), 700)
+        return
+      }
+      if (settingsRef.current.pageTurnMode === 'scroll') {
+        e.preventDefault()
+        viewRef.current?.renderer?.pan?.(0, e.deltaY)
+      }
     }
 
     host.addEventListener('touchstart', onTouchStart, { passive: false })
