@@ -437,8 +437,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
-  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
-    const hit = doc.elementFromPoint(clientX, clientY)
+  const handleContentTap = (doc: Document, clientX: number, clientY: number, target?: EventTarget | null) => {
+    const hit =
+      (target instanceof Element ? target : null) ||
+      doc.elementFromPoint(clientX, clientY)
     if (hit?.closest('a, img, video, audio, button, .lg-sel-handle')) {
       return
     }
@@ -491,12 +493,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         } catch {
           return
         }
-        const cfi = cfiFor(index, range)
+        const cfi = cfiFor(index, range) || cfiFor(index)
         const vp = toViewport(doc, clientX, clientY)
         showMarksRef.current = true
         paintParagraphMarks()
         onShowMarksRef.current?.(true)
-        if (cfi && quote.length >= 2) {
+        if (quote.length >= 2) {
           onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
         }
         return
@@ -761,6 +763,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
+    doc.addEventListener('mouseup', () => {
+      const sel = doc.getSelection()
+      if (sel && !sel.isCollapsed) emitDocSelection(doc, undefined, true)
+    })
     doc.addEventListener('click', (ev) => {
       if (state.fromTouch) {
         state.fromTouch = false
@@ -768,9 +774,33 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       if (ev.defaultPrevented) return
       const sel = doc.getSelection()
-      if (sel && !sel.isCollapsed) return
-      handleContentTap(doc, ev.clientX, ev.clientY)
+      if (sel && !sel.isCollapsed) {
+        emitDocSelection(doc, undefined, true)
+        return
+      }
+      handleContentTap(doc, ev.clientX, ev.clientY, ev.target)
     })
+    if (window.matchMedia?.('(pointer: fine)').matches) {
+      doc.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return
+        state.x = e.clientX
+        state.y = e.clientY
+        window.clearTimeout(state.timer)
+        state.timer = window.setTimeout(() => {
+          if (selectWordAt(doc, state.x, state.y)) {
+            state.selecting = true
+            emitDocSelection(doc, undefined, true)
+          }
+        }, 350)
+      })
+      doc.addEventListener('mousemove', (e) => {
+        if (!state.timer) return
+        if (Math.hypot(e.clientX - state.x, e.clientY - state.y) > 8) {
+          window.clearTimeout(state.timer)
+          state.timer = 0
+        }
+      })
+    }
   }
 
   const bindPinchToDocument = (doc: Document) => {

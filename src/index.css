@@ -330,12 +330,13 @@ select option { background: #1c1917; color: #fafaf9; }
 .reader-top {
   top: 0;
   flex-wrap: nowrap;
-  min-height: 44px;
+  min-height: calc(40px + var(--lg-sat) + 4px);
   padding-top: var(--lg-sat);
   padding-bottom: 4px;
   padding-left: 8px;
   padding-right: 8px;
   overflow: visible;
+  align-items: flex-end;
 }
 .chrome-btn {
   flex: none;
