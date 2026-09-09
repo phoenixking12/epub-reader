@@ -13,6 +13,7 @@ describe('rememberCustomColor', () => {
 
   it('ignores bundled preset swatches', () => {
     expect(rememberCustomColor([], '#facc15')).toEqual([])
+    expect(rememberCustomColor([], '#b91c1c')).toEqual([])
   })
 
   it('caps the list at twelve', () => {
