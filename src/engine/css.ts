@@ -166,10 +166,16 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     h1, h2, h3, h4, h5, h6 {
       font-weight: 700 !important;
       line-height: 1.25 !important;
+      margin-top: 0.55em !important;
+      margin-bottom: 0.35em !important;
+    }
+    h1:first-child, h2:first-child, h3:first-child,
+    h4:first-child, h5:first-child, h6:first-child {
+      margin-top: 0 !important;
     }
     h1 { font-size: 1.85em !important; }
-    h2 { font-size: 1.5em !important; }
-    h3 { font-size: 1.32em !important; }
+    h2 { font-size: 1.55em !important; }
+    h3 { font-size: 1.38em !important; }
     h4 { font-size: 1.18em !important; }
     h5, h6 { font-size: 1.1em !important; }
     h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
@@ -179,7 +185,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     [epub|type~="subtitle"],
     p.subtitle, p.subhead, p.subheading, p.heading,
     div.subtitle, div.subhead, div.subheading {
-      font-size: 1.32em !important;
+      font-size: 1.38em !important;
       font-weight: 700 !important;
     }
     a:link, a:visited { color: ${link} !important; }

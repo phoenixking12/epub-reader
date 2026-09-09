@@ -7,10 +7,11 @@ describe('buildReaderCSS', () => {
 
   it('makes headings larger and bold, including nested spans', () => {
     expect(css).toMatch(/h1, h2, h3, h4, h5, h6 \{[\s\S]*font-weight: 700/)
-    expect(css).toMatch(/h2 \{ font-size: 1\.5em/)
-    expect(css).toMatch(/h3 \{ font-size: 1\.32em/)
+    expect(css).toMatch(/h2 \{ font-size: 1\.55em/)
+    expect(css).toMatch(/h3 \{ font-size: 1\.38em/)
     expect(css).toMatch(/h1 \*, h2 \*, h3 \*, h4 \*, h5 \*, h6 \* \{[\s\S]*font-weight: inherit/)
     expect(css).toMatch(/p\.subtitle[\s\S]*font-weight: 700/)
+    expect(css).toMatch(/h1:first-child[\s\S]*margin-top: 0/)
   })
 
   it('keeps paragraph bookmark marks small', () => {

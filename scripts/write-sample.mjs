@@ -40,11 +40,16 @@ const files = {
 <p>This is a sample EPUB so you can try the reader without finding a file first.</p>
 <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
 <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>
+<p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
+<p>Bookmark dots sit at the start of a paragraph. They are small on purpose so they do not cover the text.</p>
+<p>Chapter two has a scene heading and a smaller subheading so you can check type size and weight.</p>
 </body></html>`),
   'OEBPS/ch2.xhtml': strToU8(`<?xml version="1.0"?>
 <html xmlns="http://www.w3.org/1999/xhtml"><body>
 <h1>Chapter two</h1>
+<h2>A scene heading</h2>
 <p>Swipe or tap the right edge to get here. Progress is saved as an EPUB CFI.</p>
+<h3>A smaller subheading</h3>
 <p>Open Display to try sepia, night, custom colors, brightness, margins, and line length.</p>
 </body></html>`),
 }

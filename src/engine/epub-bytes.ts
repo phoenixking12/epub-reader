@@ -11,7 +11,10 @@ export function buildMinimalEpub(opts?: {
     opts?.chapter ??
     `<p>This is a sample EPUB so you can try the reader without finding a file first.</p>
      <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
-     <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>`
+     <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>
+     <p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
+     <p>Bookmark dots sit at the start of a paragraph. They are small on purpose so they do not cover the text.</p>
+     <p>Chapter two has a scene heading and a smaller subheading so you can check type size and weight.</p>`
 
   const files: Record<string, Uint8Array> = {
     mimetype: strToU8('application/epub+zip'),

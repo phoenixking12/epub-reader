@@ -1052,17 +1052,37 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
 
+  const settingsKey = [
+    settings.flow,
+    settings.pageTurnMode,
+    settings.margin,
+    settings.maxInlineSize,
+    settings.gap,
+    settings.fontSize,
+    settings.fontFamily,
+    settings.lineHeight,
+    settings.theme,
+    settings.customBg,
+    settings.customFg,
+    settings.customLink,
+    settings.justify,
+    settings.hyphenate,
+    settings.writingMode,
+    settings.footnotePosition,
+    settings.invertImagesInNight,
+  ].join('|')
+
   useEffect(() => {
     const view = viewRef.current
     if (!view?.renderer || pinchRef.current.active) return
-    applyRendererLayout(view.renderer, settings)
-    view.renderer.setStyles?.(buildReaderCSS(settings))
+    applyRendererLayout(view.renderer, settingsRef.current)
+    view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      part.doc?.documentElement.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-      part.doc?.documentElement.style.setProperty('font-family', settings.fontFamily, 'important')
-      part.doc?.body?.style.setProperty('font-family', settings.fontFamily, 'important')
+      part.doc?.documentElement.style.setProperty('font-size', `${settingsRef.current.fontSize}px`, 'important')
+      part.doc?.documentElement.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
+      part.doc?.body?.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
     }
-  }, [settings])
+  }, [settingsKey])
 
   useEffect(() => {
     const view = viewRef.current

@@ -212,10 +212,14 @@ export function ReaderPage({ bookId, onBack }: Props) {
         bookmarks={bookmarks}
         showParagraphMarks={showChrome || marksOn}
         onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
-          setFrac(fraction)
-          setChapterFrac(sectionFraction)
-          setLoc(locLabel)
-          setPageInfo({ page, pages, scrolled })
+          setFrac((v) => (v === fraction ? v : fraction))
+          setChapterFrac((v) => (v === sectionFraction ? v : sectionFraction))
+          setLoc((v) => (v === locLabel ? v : locLabel))
+          setPageInfo((prev) =>
+            prev.page === page && prev.pages === pages && prev.scrolled === scrolled
+              ? prev
+              : { page, pages, scrolled },
+          )
           window.clearTimeout(saveTimer.current)
           saveTimer.current = window.setTimeout(() => {
             void db.books.update(bookId, {
