@@ -65,7 +65,9 @@ export function buildMinimalEpub(opts?: {
   <head><title>Chapter two</title></head>
   <body>
     <h1>Chapter two</h1>
+    <h2>A scene heading</h2>
     <p>Swipe or tap the right edge to get here. Progress is saved as an EPUB CFI, so it survives font and screen changes.</p>
+    <h3>A smaller subheading</h3>
     <p>Open Display to try sepia, night, custom colors, brightness, margins, and line length.</p>
   </body>
 </html>`),

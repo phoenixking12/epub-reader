@@ -12,7 +12,7 @@ interface Props {
 export function BookmarkNameSheet({ open, title, quote, existing, onTitle, onSave, onRemove, onClose }: Props) {
   if (!open) return null
   return (
-    <div className="sheet note-sheet" role="dialog" aria-label="Bookmark name">
+    <div className="sheet note-sheet bookmark-sheet" role="dialog" aria-label="Bookmark name">
       <header className="sheet-head">
         <h2>{existing ? 'Bookmark' : 'Name bookmark'}</h2>
         <button className="icon-btn" type="button" onClick={onClose}>

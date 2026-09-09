@@ -156,6 +156,12 @@ interface FoliateRenderer extends HTMLElement {
   getContents(): Array<{ index: number; doc: Document; overlayer?: unknown }>
   destroy(): void
   setAttribute(name: string, value: string): void
+  pan?(dx: number, dy: number): void
+  scrolled?: boolean
+  start?: number
+  viewSize?: number
+  page?: number
+  pages?: number
 }
 
 interface FoliateLocation {

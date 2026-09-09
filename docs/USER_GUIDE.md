@@ -19,7 +19,7 @@ You get **two** icon buttons and the title in the middle:
 
 If **Display → Buttons** is on, previous/next page buttons appear as well (**four** buttons total).
 
-The page shifts down so the bar does not cover the first lines.
+The page sits just under the notification bar. Double-tap shows a slim title bar; the page shifts down so the bar does not cover the first lines.
 
 The corner shows **book and chapter percent** while you scroll, or **chapter page n / N** in page modes.
 

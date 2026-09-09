@@ -801,6 +801,13 @@ export class Paginator extends HTMLElement {
         element[scrollProp] = Math.max(min, Math.min(max,
             element[scrollProp] + delta))
     }
+    pan(dx, dy) {
+        if (!this.scrolled) {
+            this.scrollBy(dx, dy)
+            return
+        }
+        this.#container[this.scrollProp] += this.#vertical ? dx : dy
+    }
     snap(vx, vy) {
         const velocity = this.#vertical ? vy : vx
         const [offset, a, b] = this.#scrollBounds
