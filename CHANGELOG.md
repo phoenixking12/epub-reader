@@ -2,6 +2,14 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.6 — 2026-09-10
+
+### Fixed
+
+- Scroll mode pans the chapter again (1:1 drag plus a fling), instead of a dead native iframe pan
+- A single tap shows a small bookmark button on every paragraph; tap the button to name it
+- Reading bar sits below the Android notification icons (no clipping, no extra black band)
+
 ## 3.1.5 — 2026-09-10
 
 ### Fixed

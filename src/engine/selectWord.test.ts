@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHugeNativeSelection, wordBounds, wordRangeFromCaret, wordRangeFromHit, nearestBookmarkBlock } from './selectWord'
+import { isHugeNativeSelection, wordBounds, wordRangeFromCaret, wordRangeFromHit, nearestBookmarkBlock, bookmarkBlocks } from './selectWord'
 
 describe('wordBounds', () => {
   it('selects the word under the caret', () => {
@@ -62,6 +62,17 @@ describe('nearestBookmarkBlock', () => {
     doc.body.innerHTML = '<div class="text">The river widened and the road followed it.</div>'
     const div = doc.querySelector('div')!
     expect(nearestBookmarkBlock(div)?.textContent).toMatch(/river widened/)
+  })
+
+  it('lists every paragraph so a single tap can show a mark on each', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p>One.</p><p>Two.</p><div>A standalone chapter line without a p tag.</div>'
+    const blocks = bookmarkBlocks(doc)
+    expect(blocks.map((el) => el.textContent?.trim())).toEqual([
+      'One.',
+      'Two.',
+      'A standalone chapter line without a p tag.',
+    ])
   })
 })
 

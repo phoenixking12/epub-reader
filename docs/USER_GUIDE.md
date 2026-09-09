@@ -37,7 +37,7 @@ In **Menu → Display → Turn pages**:
 
 ## Bookmarks
 
-**Single-tap a paragraph** to name a bookmark for that block. **☆** on the reading bar, or **Bookmark this page** in Menu, saves the current place. Find them under **☰ → Bookmarks**.
+**Single-tap a paragraph** to show a small bookmark button next to each block, then tap that button to name it. **☆** on the reading bar, or **Bookmark this page** in Menu, saves the current place. Find them under **☰ → Bookmarks**.
 
 ## Highlights and notes
 
@@ -56,10 +56,12 @@ In **Menu → Display → Turn pages**:
 | Gesture | Result |
 | --- | --- |
 | Double-tap | Show or hide Library and Menu |
-| Single-tap a paragraph | Name a bookmark for that paragraph |
+| Single-tap a paragraph | Show a bookmark button next to each paragraph |
+| Tap a paragraph bookmark button | Name a bookmark for that paragraph |
 | Single-tap a highlight | Select the whole mark |
 | Tap away from a selection | Drop the selection |
 | Swipe (in Swipe mode) | Turn the page |
+| Drag vertically (in Scroll mode) | Move through the chapter |
 | Swipe sideways (in Scroll mode) | Previous / next chapter |
 | Long-press then drag handles | Select text; stays selected until you tap away |
 | Pinch | Change type size |

@@ -16,7 +16,13 @@ describe('buildReaderCSS', () => {
 
   it('keeps paragraph bookmark marks small', () => {
     expect(css).toMatch(/\.lg-pmark::after[\s\S]*width: 7px/)
-    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 22px/)
+    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 28px/)
+  })
+
+  it('disables native iframe pan in scroll mode so chapter pan can run', () => {
+    const scrolled = buildReaderCSS({ ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
+    expect(scrolled).toMatch(/touch-action: none/)
+    expect(css).toMatch(/touch-action: pan-x pan-y/)
   })
 
   it('does not override the book typeface when Book default is selected', () => {

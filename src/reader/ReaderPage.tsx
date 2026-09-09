@@ -205,7 +205,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
 
   return (
     <div
-      className={`reader ${showChrome ? 'chrome-on' : ''}`}
+      className={`reader ${showChrome ? 'chrome-on' : ''} ${display.pageTurnMode === 'scroll' ? 'scroll-mode' : ''}`}
       style={{ background: colors.bg, ['--chrome-h' as string]: `${chromeH}px` }}
     >
       <FoliateHost

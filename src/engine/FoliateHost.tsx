@@ -9,7 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
-import { caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
+import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { usesPublisherFont } from '../settings/defaults'
 
 export interface SelectionInfo {
@@ -179,7 +179,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const savedRanges = useRef(new WeakMap<Document, Range>())
   const hidingNative = useRef(new WeakSet<Document>())
   const tapRef = useRef({ t: 0, x: 0, y: 0, timer: 0 })
-  const markFocusRef = useRef('')
+  const scrollPanRef = useRef({ lastY: 0, lastT: 0, vy: 0, active: false, raf: 0, suppressTapUntil: 0 })
 
   settingsRef.current = settings
   annotationsRef.current = annotations
@@ -203,6 +203,60 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   }
 
   const clampFont = (size: number) => Math.min(36, Math.max(12, size))
+
+  const isScrollMode = () =>
+    settingsRef.current.pageTurnMode === 'scroll' || settingsRef.current.flow === 'scrolled'
+
+  const stopFling = () => {
+    if (scrollPanRef.current.raf) {
+      cancelAnimationFrame(scrollPanRef.current.raf)
+      scrollPanRef.current.raf = 0
+    }
+  }
+
+  const panChapter = (dy: number) => {
+    viewRef.current?.renderer?.pan?.(0, dy)
+  }
+
+  const beginChapterPan = (clientY: number, time: number) => {
+    stopFling()
+    scrollPanRef.current.lastY = clientY
+    scrollPanRef.current.lastT = time
+    scrollPanRef.current.vy = 0
+    scrollPanRef.current.active = false
+  }
+
+  const moveChapterPan = (clientY: number, time: number) => {
+    const s = scrollPanRef.current
+    const dt = Math.max(1, time - s.lastT)
+    const dy = clientY - s.lastY
+    s.vy = dy / dt
+    s.lastY = clientY
+    s.lastT = time
+    s.active = true
+    panChapter(-dy)
+  }
+
+  const flingChapter = () => {
+    const s = scrollPanRef.current
+    if (s.active) s.suppressTapUntil = Date.now() + 280
+    s.active = false
+    let vy = s.vy
+    if (Math.abs(vy) < 0.12) return
+    let last = performance.now()
+    const step = (now: number) => {
+      const dt = Math.min(32, now - last)
+      last = now
+      vy *= Math.pow(0.965, dt / 16)
+      if (Math.abs(vy) < 0.04) {
+        s.raf = 0
+        return
+      }
+      panChapter(-vy * dt)
+      s.raf = requestAnimationFrame(step)
+    }
+    s.raf = requestAnimationFrame(step)
+  }
 
   const showPinchBadge = (size: number, visible: boolean) => {
     const badge = badgeRef.current
@@ -427,9 +481,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       doc.documentElement.classList.toggle('lg-show-marks', showMarksRef.current)
       doc.querySelectorAll('.lg-pmark').forEach((n) => n.remove())
       if (!showMarksRef.current) continue
-      const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
-      for (const block of nodes) {
-        if (!(block instanceof HTMLElement)) continue
+      for (const block of bookmarkBlocks(doc)) {
         const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
         if (quote.length < 2) continue
         const range = doc.createRange()
@@ -442,18 +494,29 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const on = bookmarksRef.current.some(
           (b) => b.cfi === cfi || (b.kind === 'paragraph' && b.quote === quote),
         )
-        if (!on && cfi !== markFocusRef.current) continue
         const btn = doc.createElement('button')
         btn.type = 'button'
         btn.className = `lg-pmark${on ? ' on' : ''}`
         btn.setAttribute('aria-label', on ? 'Edit bookmark' : 'Bookmark paragraph')
-        btn.addEventListener('click', (e) => {
+        if (doc.defaultView?.getComputedStyle(block).position === 'static') {
+          block.style.setProperty('position', 'relative', 'important')
+        }
+        let opened = false
+        const open = (e: Event) => {
           e.preventDefault()
           e.stopPropagation()
+          if (opened) return
+          if (Date.now() < scrollPanRef.current.suppressTapUntil) return
+          opened = true
+          window.setTimeout(() => {
+            opened = false
+          }, 400)
           const r = btn.getBoundingClientRect()
           const vp = toViewport(doc, r.left, r.top)
           onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
-        })
+        }
+        btn.addEventListener('click', open)
+        btn.addEventListener('touchend', open)
         block.prepend(btn)
       }
     }
@@ -464,6 +527,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       (target instanceof Element ? target : null) ||
       doc.elementFromPoint(clientX, clientY)
     if (hit?.closest('a, button, .lg-sel-handle, .lg-pmark')) {
+      window.clearTimeout(tapRef.current.timer)
       return
     }
     if (savedRanges.current.has(doc) || doc.querySelector('.lg-sel-handle')) {
@@ -510,6 +574,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         onImageRef.current({ src: img.src, alt: img.alt || img.title || '' })
         return
       }
+      if (showMarksRef.current) {
+        showMarksRef.current = false
+        paintParagraphMarks()
+        onShowMarksRef.current?.(false)
+        onIdleTapRef.current?.()
+        return
+      }
       const fromNode =
         target instanceof Text
           ? target.parentElement
@@ -524,22 +595,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const block =
         nearestBookmarkBlock(fromNode instanceof Element ? fromNode : hit instanceof Element ? hit : null) ||
         nearestBookmarkBlock(caretEl)
-      if (block instanceof HTMLElement) {
-        const range = doc.createRange()
-        try {
-          range.selectNodeContents(block)
-        } catch {
-          return
-        }
-        const index = viewRef.current?.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
-        markFocusRef.current = cfiFor(index, range)
-        showMarksRef.current = true
+      showMarksRef.current = true
+      paintParagraphMarks()
+      const painted = Boolean(doc.querySelector('.lg-pmark'))
+      if (painted || block instanceof HTMLElement) {
         onShowMarksRef.current?.(true)
-        window.setTimeout(() => paintParagraphMarks(), 0)
         return
       }
       showMarksRef.current = false
-      markFocusRef.current = ''
       paintParagraphMarks()
       onShowMarksRef.current?.(false)
       onIdleTapRef.current?.()
@@ -607,6 +670,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       lastY: 0,
       t: 0,
       selecting: false,
+      panning: false,
       fromTouch: false,
       handle: null as 'start' | 'end' | null,
       anchorNode: null as Node | null,
@@ -646,6 +710,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.lastY = t.clientY
         state.t = Date.now()
         state.fromTouch = true
+        state.panning = false
+        if (isScrollMode()) beginChapterPan(t.clientY, e.timeStamp)
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
         if (handleEl) {
@@ -672,6 +738,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.selecting = false
         state.handle = null
         state.timer = window.setTimeout(() => {
+          if (state.panning) return
           if (selectWordAt(doc, state.x, state.y)) {
             state.selecting = true
             emitDocSelection(doc)
@@ -689,6 +756,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const moved = Math.hypot(t.clientX - state.x, t.clientY - state.y)
         const totalX = t.clientX - state.x
         const totalY = t.clientY - state.y
+        const scrollMode = isScrollMode()
         if (state.handle && state.anchorNode) {
           e.preventDefault()
           e.stopPropagation()
@@ -702,14 +770,27 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
             extendSelectionTo(doc, t.clientX, t.clientY)
           }
           emitSoon()
+          state.lastX = t.clientX
+          state.lastY = t.clientY
           return
         }
         if (moved > 8) window.clearTimeout(state.timer)
-        if (state.selecting && Math.abs(totalY) > 28 && Math.abs(totalY) > Math.abs(totalX) * 1.2) {
+        if (state.selecting && scrollMode && Math.abs(totalY) > 22 && Math.abs(totalY) > Math.abs(totalX) * 1.15) {
           abortSelectToPan()
+          state.panning = true
+          beginChapterPan(t.clientY, e.timeStamp)
+        }
+        if (!state.selecting) {
+          if (scrollMode && (state.panning || (Math.abs(totalY) > 4 && Math.abs(totalY) > Math.abs(totalX) * 0.7))) {
+            state.panning = true
+            e.preventDefault()
+            e.stopPropagation()
+            moveChapterPan(t.clientY, e.timeStamp)
+            state.lastX = t.clientX
+            state.lastY = t.clientY
+          }
           return
         }
-        if (!state.selecting) return
         e.preventDefault()
         e.stopPropagation()
         extendSelectionTo(doc, t.clientX, t.clientY)
@@ -729,6 +810,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         emitDocSelection(doc)
         state.selecting = false
         state.handle = null
+        state.panning = false
+        return
+      }
+      if (state.panning) {
+        state.panning = false
+        state.selecting = false
+        state.handle = null
+        flingChapter()
         return
       }
       if (
@@ -741,7 +830,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const dy = t.clientY - state.y
         const mode = settingsRef.current.pageTurnMode
         const sideways = Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4
-        if (sideways && (mode === 'swipe' || mode === 'scroll')) {
+        if (sideways && (mode === 'swipe' || isScrollMode())) {
           e.stopPropagation()
           if (mode === 'scroll') {
             if (dx < 0) viewRef.current?.renderer?.nextSection?.()
@@ -756,6 +845,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       state.selecting = false
       state.handle = null
+      state.panning = false
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
@@ -848,9 +938,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           window.setTimeout(() => showPinchBadge(next, false), 700)
           return
         }
-        if (settingsRef.current.pageTurnMode === 'scroll') {
+        if (isScrollMode()) {
           e.preventDefault()
-          viewRef.current?.renderer?.pan?.(0, e.deltaY)
+          panChapter(e.deltaY)
         }
       },
       opts,
@@ -1239,9 +1329,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         window.setTimeout(() => showPinchBadge(next, false), 700)
         return
       }
-      if (settingsRef.current.pageTurnMode === 'scroll') {
+      if (isScrollMode()) {
         e.preventDefault()
-        viewRef.current?.renderer?.pan?.(0, e.deltaY)
+        panChapter(e.deltaY)
       }
     }
 
@@ -1250,6 +1340,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     host.addEventListener('touchend', onTouchEnd)
     host.addEventListener('wheel', onWheel, { passive: false })
     return () => {
+      stopFling()
       host.removeEventListener('touchstart', onTouchStart)
       host.removeEventListener('touchmove', onTouchMove)
       host.removeEventListener('touchend', onTouchEnd)

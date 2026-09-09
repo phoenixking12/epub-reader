@@ -42,7 +42,7 @@ img { max-width: 100%; }
 .library, .settings {
   min-height: 100%;
   padding: 20px 20px 120px;
-  padding-top: 12px;
+  padding-top: calc(12px + var(--lg-sat));
   padding-bottom: max(120px, calc(var(--lg-sab) + 96px));
   max-width: 960px;
   margin: 0 auto;
@@ -296,17 +296,23 @@ select option { background: #1c1917; color: #fafaf9; }
   --chrome-h: 0px;
 }
 .reader.chrome-on {
-  --chrome-h: 44px;
+  --chrome-h: calc(44px + var(--lg-sat));
+}
+.reader.scroll-mode {
+  touch-action: none;
 }
 .foliate-host {
   position: absolute;
   inset: 0;
-  top: 0;
+  top: var(--lg-sat);
   bottom: var(--lg-sab);
   touch-action: pan-x pan-y;
 }
+.reader.scroll-mode .foliate-host {
+  touch-action: none;
+}
 .reader.chrome-on .foliate-host {
-  top: var(--chrome-h, 44px);
+  top: var(--chrome-h, calc(44px + var(--lg-sat)));
 }
 .foliate-host foliate-view {
   display: block;
@@ -334,10 +340,11 @@ select option { background: #1c1917; color: #fafaf9; }
 .reader-top {
   top: 0;
   flex-wrap: nowrap;
-  min-height: 44px;
+  min-height: calc(44px + var(--lg-sat));
   padding: 2px 6px;
+  padding-top: var(--lg-sat);
   overflow: visible;
-  align-items: center;
+  align-items: flex-end;
 }
 .chrome-btn {
   flex: none;
@@ -546,7 +553,7 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .reader-menu {
   position: absolute;
-  top: calc(var(--chrome-h, 44px) + 4px);
+  top: calc(var(--chrome-h, calc(44px + var(--lg-sat))) + 4px);
   right: 10px;
   z-index: 6;
   display: grid;

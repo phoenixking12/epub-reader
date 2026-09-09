@@ -52,6 +52,7 @@ export function caretIsTextual(node: Node): boolean {
 }
 
 const BLOCK_SEL = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, td, th'
+export const BOOKMARK_TAGS = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption'
 
 export function wordRangeFromCaret(caret: Range): Range | null {
   let node: Node | null = caret.startContainer
@@ -95,7 +96,7 @@ export function wordRangeFromHit(caret: Range | null, hit: Element | null): Rang
 
 export function nearestBookmarkBlock(hit: Element | null): HTMLElement | null {
   if (!hit) return null
-  const exact = hit.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption')
+  const exact = hit.closest(BOOKMARK_TAGS)
   if (exact instanceof HTMLElement) return exact
   let el: Element | null = hit
   let best: HTMLElement | null = null
@@ -107,6 +108,42 @@ export function nearestBookmarkBlock(hit: Element | null): HTMLElement | null {
     el = el.parentElement
   }
   return best
+}
+
+function blockQuote(el: HTMLElement): string {
+  return (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
+export function bookmarkBlocks(doc: Document): HTMLElement[] {
+  const root = doc.body ?? doc.documentElement
+  if (!root) return []
+  const out: HTMLElement[] = []
+  const seen = new Set<HTMLElement>()
+  const add = (el: HTMLElement) => {
+    if (seen.has(el)) return
+    if (blockQuote(el).length < 2) return
+    seen.add(el)
+    out.push(el)
+  }
+  for (const node of root.querySelectorAll(BOOKMARK_TAGS)) {
+    if (node instanceof HTMLElement) add(node)
+  }
+  for (const node of root.querySelectorAll('div')) {
+    if (!(node instanceof HTMLElement)) continue
+    if (node.closest(BOOKMARK_TAGS)) continue
+    if (node.querySelector(BOOKMARK_TAGS)) continue
+    const quote = blockQuote(node)
+    if (quote.length < 8 || quote.length > 1600) continue
+    const nested = [...node.querySelectorAll('div')].some((child) => {
+      if (!(child instanceof HTMLElement)) return false
+      if (child.querySelector(BOOKMARK_TAGS)) return false
+      const q = blockQuote(child)
+      return q.length >= 8 && q.length <= 1600
+    })
+    if (nested) continue
+    add(node)
+  }
+  return out
 }
 
 export function isHugeNativeSelection(text: string, savedLen = 0): boolean {

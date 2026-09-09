@@ -1,4 +1,4 @@
-import { THEMES, usesPublisherFont } from '../settings/defaults'
+import { THEMES, flowForPageTurn, usesPublisherFont } from '../settings/defaults'
 import type { DisplaySettings } from '../types/models'
 import { collectDocumentFontFaces } from './fontFaces'
 
@@ -29,7 +29,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${fontFamilyCss}
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: pan-x pan-y;
+      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'pan-x pan-y'};
       -webkit-user-select: text !important;
       user-select: text !important;
       -webkit-touch-callout: none !important;
@@ -44,7 +44,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       font-size: 1em !important;
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: pan-x pan-y;
+      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'pan-x pan-y'};
       -webkit-user-select: text !important;
       user-select: text !important;
       -webkit-touch-callout: none !important;
@@ -65,7 +65,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       font-family: ${settings.fontFamily} !important;
     }`
     }
-    p, h1, h2, h3, h4, h5, h6, li, blockquote {
+    p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption {
       position: relative !important;
     }
     html.lg-show-marks p,
@@ -76,7 +76,12 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     html.lg-show-marks h5,
     html.lg-show-marks h6,
     html.lg-show-marks li,
-    html.lg-show-marks blockquote {
+    html.lg-show-marks blockquote,
+    html.lg-show-marks dd,
+    html.lg-show-marks dt,
+    html.lg-show-marks pre,
+    html.lg-show-marks figcaption,
+    html.lg-show-marks div {
       overflow: visible !important;
     }
     ::highlight(lg-sel) {
@@ -95,8 +100,8 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       position: absolute;
       left: 0;
       top: 0.15em;
-      width: 22px;
-      height: 22px;
+      width: 28px;
+      height: 28px;
       margin: 0;
       padding: 0;
       border: 0;
@@ -239,7 +244,7 @@ export function applyRendererLayout(
   settings: DisplaySettings,
 ) {
   if (!renderer) return
-  renderer.setAttribute('flow', settings.flow)
+  renderer.setAttribute('flow', flowForPageTurn(settings.pageTurnMode))
   renderer.setAttribute('margin', `${settings.margin}px`)
   renderer.setAttribute('max-inline-size', `${settings.maxInlineSize}px`)
   renderer.setAttribute('gap', `${settings.gap}%`)

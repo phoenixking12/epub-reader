@@ -6,6 +6,7 @@ import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebView;
 
 import androidx.core.graphics.Insets;
@@ -37,24 +38,43 @@ public class MainActivity extends BridgeActivity {
     private void applySystemBarInsets() {
         if (getBridge() == null || getBridge().getWebView() == null) return;
         View webView = getBridge().getWebView();
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), webView);
         bars.setAppearanceLightStatusBars(false);
         bars.setAppearanceLightNavigationBars(false);
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
+            Insets status = insets.getInsets(
+                    WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
             Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-            v.setPadding(0, 0, 0, nav.bottom);
+            ViewGroup.LayoutParams raw = v.getLayoutParams();
+            if (raw instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
+                lp.topMargin = 0;
+                lp.bottomMargin = 0;
+                lp.leftMargin = 0;
+                lp.rightMargin = 0;
+                v.setLayoutParams(lp);
+            }
+            v.setPadding(0, 0, 0, 0);
             String js =
-                    "document.documentElement.style.setProperty('--lg-sat','0px');"
+                    "document.documentElement.style.setProperty('--lg-sat','"
+                            + status.top
+                            + "px');"
                             + "document.documentElement.style.setProperty('--lg-sab','"
                             + nav.bottom
                             + "px');";
             if (v instanceof WebView) {
                 ((WebView) v).evaluateJavascript(js, null);
             }
-            return insets;
+            return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(webView);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        applySystemBarInsets();
     }
 
     @Override
