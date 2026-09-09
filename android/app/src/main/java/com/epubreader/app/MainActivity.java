@@ -1,13 +1,17 @@
 package com.epubreader.app;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
@@ -18,19 +22,38 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(IncomingEpubPlugin.class);
         registerPlugin(VolumeKeysPlugin.class);
         super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(Color.parseColor("#1c1917"));
+        getWindow().setNavigationBarColor(Color.parseColor("#1c1917"));
         View content = findViewById(android.R.id.content);
-        if (content != null) content.post(this::applySystemBarInsets);
-        else applySystemBarInsets();
+        if (content != null) {
+            content.setBackgroundColor(Color.parseColor("#1c1917"));
+            content.post(this::applySystemBarInsets);
+        } else {
+            applySystemBarInsets();
+        }
     }
 
     private void applySystemBarInsets() {
         if (getBridge() == null || getBridge().getWebView() == null) return;
         View webView = getBridge().getWebView();
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), webView);
+        bars.setAppearanceLightStatusBars(false);
+        bars.setAppearanceLightNavigationBars(false);
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
             Insets status = insets.getInsets(WindowInsetsCompat.Type.statusBars());
             Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-            v.setPadding(0, status.top, 0, nav.bottom);
-            return insets;
+            ViewGroup.LayoutParams raw = v.getLayoutParams();
+            if (raw instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
+                lp.topMargin = status.top;
+                lp.bottomMargin = nav.bottom;
+                v.setLayoutParams(lp);
+                v.setPadding(0, 0, 0, 0);
+            } else {
+                v.setPadding(0, status.top, 0, nav.bottom);
+            }
+            return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(webView);
         webView.setOnLongClickListener(v -> true);

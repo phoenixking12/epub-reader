@@ -512,6 +512,8 @@ export class Paginator extends HTMLElement {
             grid-column: 1 / -1;
             grid-row: 1 / -1;
             overflow: auto;
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
         }
         #header {
             grid-column: 3 / 4;
@@ -569,9 +571,12 @@ export class Paginator extends HTMLElement {
         this.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
         this.addEventListener('touchend', this.#onTouchEnd.bind(this))
         this.addEventListener('load', ({ detail: { doc } }) => {
-            doc.addEventListener('touchstart', this.#onTouchStart.bind(this), opts)
-            doc.addEventListener('touchmove', this.#onTouchMove.bind(this), opts)
-            doc.addEventListener('touchend', this.#onTouchEnd.bind(this))
+            doc.addEventListener('touchstart', this.#onTouchStart.bind(this), { passive: true })
+            doc.addEventListener('touchmove', (e) => {
+                if (this.scrolled) return
+                this.#onTouchMove(e)
+            }, opts)
+            doc.addEventListener('touchend', this.#onTouchEnd.bind(this), { passive: true })
         })
 
         this.addEventListener('relocate', ({ detail }) => {
@@ -985,13 +990,16 @@ export class Paginator extends HTMLElement {
         if (src) {
             const view = this.#createView()
             const afterLoad = doc => {
-                if (doc.head) {
-                    const $styleBefore = doc.createElement('style')
-                    doc.head.prepend($styleBefore)
-                    const $style = doc.createElement('style')
-                    doc.head.append($style)
-                    this.#styleMap.set(doc, [$styleBefore, $style])
+                let head = doc.head
+                if (!head) {
+                    head = doc.createElement('head')
+                    doc.documentElement.insertBefore(head, doc.body)
                 }
+                const $styleBefore = doc.createElement('style')
+                head.prepend($styleBefore)
+                const $style = doc.createElement('style')
+                head.append($style)
+                this.#styleMap.set(doc, [$styleBefore, $style])
                 onLoad?.({ doc, index })
             }
             const beforeRender = this.#beforeRender.bind(this)

@@ -952,7 +952,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         pages,
         scrolled,
       })
-      window.setTimeout(() => paintParagraphMarks(), 0)
     }
 
     const onCreateOverlay = () => {
@@ -1026,7 +1025,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         })
         applyRendererLayout(view.renderer, settingsRef.current)
         view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
-        await view.init({ lastLocation: lastLocation || undefined, showTextStart: !lastLocation })
+        try {
+          await view.init({ lastLocation: lastLocation || undefined, showTextStart: !lastLocation })
+        } catch (err) {
+          console.warn(err)
+          await view.goTo(0).catch(() => undefined)
+        }
         if (cancelled) return
         onReadyRef.current?.(book.toc ?? [], String(book.metadata?.title ?? ''), Boolean(view.mediaOverlay))
         paintAnnotations()

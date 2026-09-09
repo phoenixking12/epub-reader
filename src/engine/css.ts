@@ -160,7 +160,10 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     }
     .lg-sel-handle[data-edge="start"]::after { top: 0; }
     .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
-    p, li, blockquote, dd, div, section, article, aside, td, th, span {
+    p:not(.subtitle):not(.subhead):not(.subheading):not(.heading):not(.title),
+    li, blockquote, dd,
+    div:not(.subtitle):not(.subhead):not(.subheading),
+    section, article, aside, td, th, span {
       font-size: inherit !important;
     }
     h1, h2, h3, h4, h5, h6 {
@@ -218,6 +221,15 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${settings.footnotePosition === 'follow' ? '' : 'display: none;'}
     }
     math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }
+    html body .subtitle,
+    html body .subhead,
+    html body p.subtitle,
+    html body p.subhead,
+    html body p.heading {
+      font-size: 1.5em !important;
+      font-weight: 700 !important;
+      font-synthesis: weight !important;
+    }
   `
 }
 

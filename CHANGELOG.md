@@ -2,6 +2,16 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.2 — 2026-09-09
+
+### Fixed
+
+- The reading bar sits below the Android notification bar (WebView margins, not padding that HTML ignores)
+- Chapters without a `<head>` still get reader CSS, so subheadings actually render larger and bold
+- Scroll stays smooth: bookmark dots are not rebuilt on every relocate, and scroll-mode touchmove is passive
+- **Bookmark this page** uses the live CFI; a broken saved location no longer aborts opening the chapter
+- Bold (700) faces are loaded so heading weight is not synthesized
+
 ## 3.1.1 — 2026-09-09
 
 ### Fixed

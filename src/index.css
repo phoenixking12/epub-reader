@@ -326,7 +326,7 @@ select option { background: #1c1917; color: #fafaf9; }
   top: 0;
   flex-wrap: nowrap;
   min-height: 44px;
-  padding-top: 2px;
+  padding-top: max(2px, env(safe-area-inset-top, 0px));
   padding-bottom: 2px;
   padding-left: 8px;
   padding-right: 8px;

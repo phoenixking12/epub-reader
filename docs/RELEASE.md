@@ -4,9 +4,9 @@ Keep these three version numbers the same before you tag a build:
 
 | Place | Field | Example |
 | --- | --- | --- |
-| `package.json` | `version` | `3.1.1` |
-| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `3.1.1` / `9` |
-| `android/app/build.gradle` | `versionName` / `versionCode` | `3.1.1` / `9` |
+| `package.json` | `version` | `3.1.2` |
+| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `3.1.2` / `10` |
+| `android/app/build.gradle` | `versionName` / `versionCode` | `3.1.2` / `10` |
 
 `versionCode` must **increase** on every APK you ship (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app. Do not change `applicationId` (`com.epubreader.app`) or the Dexie database name (`epub-reader`), or users will get a second install and an empty library.
 
@@ -27,7 +27,7 @@ Do not change the Android **application id**.
 5. Tag and push:
 
 ```bash
-git tag v3.1.1
+git tag v3.1.2
 git push origin main --tags
 ```
 

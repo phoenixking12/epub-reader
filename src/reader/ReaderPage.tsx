@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { db, getSettings, saveSettings, withSettingsDefaults } from '../db'
 import { FoliateHost, type FoliateHandle, type SelectionInfo } from '../engine/FoliateHost'
 import { themeColors } from '../engine/css'
@@ -8,7 +8,7 @@ import { VolumeKeys } from '../native/volume'
 import { openWebSearch, shareText } from '../native/share'
 import { rememberCustomColor } from '../settings/colors'
 import { newId } from '../settings/defaults'
-import type { AnnotationRecord, BookmarkKind, DisplaySettings, TocNode } from '../types/models'
+import type { AnnotationRecord, BookmarkKind, BookmarkRecord, DisplaySettings, FontRecord, TocNode } from '../types/models'
 import { BookmarkNameSheet } from './BookmarkNameSheet'
 import { DisplayPanel, type DisplaySection } from './DisplayPanel'
 import { Drawer, type DrawerMode, type DrawerTab } from './Drawer'
@@ -23,15 +23,19 @@ interface Props {
   onBack: () => void
 }
 
+const EMPTY_BOOKMARKS: BookmarkRecord[] = []
+const EMPTY_ANNOTATIONS: AnnotationRecord[] = []
+const EMPTY_FONTS: FontRecord[] = []
+
 export function ReaderPage({ bookId, onBack }: Props) {
   const book = useLiveQuery(() => db.books.get(bookId), [bookId])
   const bookmarks =
-    useLiveQuery(() => db.bookmarks.where('bookId').equals(bookId).sortBy('order'), [bookId]) ?? []
+    useLiveQuery(() => db.bookmarks.where('bookId').equals(bookId).sortBy('order'), [bookId]) ?? EMPTY_BOOKMARKS
   const annotations =
-    useLiveQuery(() => db.annotations.where('bookId').equals(bookId).toArray(), [bookId]) ?? []
-  const fonts = useLiveQuery(() => db.fonts.toArray()) ?? []
+    useLiveQuery(() => db.annotations.where('bookId').equals(bookId).toArray(), [bookId]) ?? EMPTY_ANNOTATIONS
+  const fonts = useLiveQuery(() => db.fonts.toArray()) ?? EMPTY_FONTS
   const settingsLive = useLiveQuery(() => db.settings.get('global'))
-  const settingsRow = withSettingsDefaults(settingsLive)
+  const settingsRow = useMemo(() => withSettingsDefaults(settingsLive), [settingsLive])
   const display = settingsRow.display
   const file = useBookFile(book?.fileKey)
   const host = useRef<FoliateHandle>(null)
@@ -58,6 +62,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [footnote, setFootnote] = useState<{ html: string; href: string } | null>(null)
   const [toc, setToc] = useState<TocNode[]>([])
   const [hasMedia, setHasMedia] = useState(false)
+  const locationRef = useRef({ cfi: '', quote: '' })
   const [frac, setFrac] = useState(0)
   const [chapterFrac, setChapterFrac] = useState(0)
   const [loc, setLoc] = useState('')
@@ -212,6 +217,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         bookmarks={bookmarks}
         showParagraphMarks={showChrome || marksOn}
         onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
+          locationRef.current = { cfi, quote: locLabel }
           setFrac((v) => (v === fraction ? v : fraction))
           setChapterFrac((v) => (v === sectionFraction ? v : sectionFraction))
           setLoc((v) => (v === locLabel ? v : locLabel))
@@ -352,10 +358,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
           onFind={() => setSearchOpen(true)}
           onBookmarkPage={() =>
             openBookmarkSheet({
-              cfi: book.progressCfi,
-              quote: loc,
+              cfi: locationRef.current.cfi || book.progressCfi,
+              quote: locationRef.current.quote || loc,
               kind: 'position',
-              title: loc || 'Current position',
+              title: locationRef.current.quote || loc || 'Current position',
             })
           }
           onAudio={() => host.current?.startMediaOverlay()}
