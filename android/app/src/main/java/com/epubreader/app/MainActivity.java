@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.KeyEvent;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
@@ -84,30 +85,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    public ActionMode startActionMode(ActionMode.Callback callback) {
-        return null;
-    }
-
-    @Override
-    public ActionMode startActionMode(ActionMode.Callback callback, int type) {
-        return null;
-    }
-
-    @Override
     public void onActionModeStarted(ActionMode mode) {
         super.onActionModeStarted(mode);
-        if (mode != null) {
-            mode.finish();
-        }
-    }
-
-    @Override
-    public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
-        return null;
-    }
-
-    @Override
-    public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
-        return null;
+        if (mode == null || mode.getMenu() == null) return;
+        mode.getMenu().clear();
+        MenuItem keep = mode.getMenu().add(" ");
+        keep.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+        keep.setVisible(false);
+        keep.setEnabled(false);
     }
 }

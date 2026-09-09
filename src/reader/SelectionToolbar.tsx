@@ -112,12 +112,7 @@ export function SelectionToolbar({
             className={`sel-icon ${item.className ?? ''} ${style === item.id ? 'on' : ''}`}
             aria-label={item.label}
             aria-pressed={style === item.id}
-            onClick={() => {
-              setStyle(item.id)
-              if (item.id === 'bold' || item.id === 'italic' || item.id === 'strike' || item.id === 'squiggly') {
-                onHighlight(item.id, color)
-              }
-            }}
+            onClick={() => apply(item.id, color)}
           >
             {item.mark}
           </button>

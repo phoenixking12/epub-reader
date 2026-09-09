@@ -454,7 +454,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const existing = hitAnnotation(doc, clientX, clientY)
     const now = Date.now()
     const prev = tapRef.current
-    const isDouble = now - prev.t < 300 && Math.hypot(clientX - prev.x, clientY - prev.y) < 28
+    const isDouble = now - prev.t < 280 && Math.hypot(clientX - prev.x, clientY - prev.y) < 28
     window.clearTimeout(prev.timer)
 
     if (isDouble) {
@@ -482,6 +482,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     prev.timer = window.setTimeout(() => {
+      prev.t = 0
       const fromNode =
         target instanceof Text
           ? target.parentElement
@@ -520,7 +521,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       paintParagraphMarks()
       onShowMarksRef.current?.(false)
       onIdleTapRef.current?.()
-    }, 280)
+    }, 320)
   }
 
   const suppressNativeUi = (doc: Document) => {

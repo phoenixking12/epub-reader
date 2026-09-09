@@ -2,6 +2,15 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.4 — 2026-09-09
+
+### Fixed
+
+- Long-press keeps the Android word selection so highlight, note, copy, and bookmark tools can appear
+- Highlight / underline / font-color apply as soon as you tap the style
+- Double-tap still toggles the reading bar; a single tap on a paragraph still names a bookmark
+- Android versionCode 12 so this APK updates 3.1.3
+
 ## 3.1.3 — 2026-09-09
 
 ### Fixed
