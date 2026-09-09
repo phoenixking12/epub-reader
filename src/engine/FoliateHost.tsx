@@ -8,7 +8,9 @@ import { View } from 'foliate-js/view.js'
 import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
-import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
+import { applyRendererLayout, buildReaderCSS, themeColors, usesPublisherFont } from './css'
+import { isElement, isHtmlElement, isHtmlImage } from './crossRealm'
+import { selectWordAtPoint, unwrapAnnotation, wrapRange } from './annMarks'
 
 export interface SelectionInfo {
   cfi: string
@@ -74,7 +76,6 @@ interface Props {
   settings: DisplaySettings
   annotations: AnnotationRecord[]
   bookmarks?: Array<Pick<BookmarkRecord, 'cfi' | 'quote' | 'kind'>>
-  showParagraphMarks?: boolean
   onRelocate: (info: RelocateInfo) => void
   onSelection: (sel: SelectionInfo | null) => void
   onImage: (img: ImageInfo) => void
@@ -82,7 +83,6 @@ interface Props {
   onReady?: (toc: unknown, title: string, hasMedia: boolean) => void
   onTapCenter: () => void
   onParagraphTap: (info: ParagraphTapInfo | null) => void
-  onShowMarks?: (visible: boolean) => void
   onIdleTap?: () => void
   onFontSizeChange: (size: number) => void
 }
@@ -98,30 +98,14 @@ function drawAnnotation(
 }
 
 function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
-  if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') return
-  if (typeof Highlight !== 'function' || !CSS.highlights) return
+  wrapRange(range, rec)
+  if (typeof Highlight !== 'function' || !doc.defaultView?.CSS?.highlights) return
   const name = `ann-${rec.id}`
-  CSS.highlights.set(name, new Highlight(range))
-  const parent = doc.head ?? doc.documentElement
-  if (!parent) return
-  let styleEl = doc.getElementById('reader-highlight-styles') as HTMLStyleElement | null
-  if (!styleEl) {
-    styleEl = doc.createElement('style')
-    styleEl.id = 'reader-highlight-styles'
-    parent.append(styleEl)
+  try {
+    doc.defaultView.CSS.highlights.set(name, new Highlight(range))
+  } catch {
+    /* Highlight API missing or range detached */
   }
-  const extra =
-    rec.style === 'textColor'
-      ? `color: ${rec.color};`
-      : rec.style === 'bold'
-        ? `font-weight: 700; text-shadow: 0.3px 0 0 currentColor;`
-        : rec.style === 'italic'
-          ? `font-style: italic;`
-          : ''
-  const start = `::highlight(${name})`
-  const lines = (styleEl.textContent || '').split('\n').filter((line) => !line.includes(start))
-  if (extra) lines.push(`${start} { ${extra} }`)
-  styleEl.textContent = `${lines.filter(Boolean).join('\n')}\n`
 }
 
 export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost(
@@ -131,7 +115,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     settings,
     annotations,
     bookmarks = [],
-    showParagraphMarks = false,
     onRelocate,
     onSelection,
     onImage,
@@ -139,7 +122,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     onReady,
     onTapCenter,
     onParagraphTap,
-    onShowMarks,
     onIdleTap,
     onFontSizeChange,
   },
@@ -150,7 +132,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const settingsRef = useRef(settings)
   const annotationsRef = useRef(annotations)
   const bookmarksRef = useRef(bookmarks)
-  const showMarksRef = useRef(showParagraphMarks)
   const pinchRef = useRef({ active: false, startDist: 0, startSize: 18, lastSize: 18, lastAt: 0 })
   const badgeRef = useRef<HTMLDivElement>(null)
   const pinchDocs = useRef(new WeakSet<Document>())
@@ -162,8 +143,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const onFootnoteRef = useRef(onFootnote)
   const onTapCenterRef = useRef(onTapCenter)
   const onParagraphTapRef = useRef(onParagraphTap)
-  const onShowMarksRef = useRef(onShowMarks)
   const onIdleTapRef = useRef(onIdleTap)
+  const markFocusRef = useRef<Element | null>(null)
   const onReadyRef = useRef(onReady)
   const onFontSizeRef = useRef(onFontSizeChange)
   const savedRanges = useRef(new WeakMap<Document, Range>())
@@ -173,14 +154,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   settingsRef.current = settings
   annotationsRef.current = annotations
   bookmarksRef.current = bookmarks
-  showMarksRef.current = showParagraphMarks
   onRelocateRef.current = onRelocate
   onSelectionRef.current = onSelection
   onImageRef.current = onImage
   onFootnoteRef.current = onFootnote
   onTapCenterRef.current = onTapCenter
   onParagraphTapRef.current = onParagraphTap
-  onShowMarksRef.current = onShowMarks
   onIdleTapRef.current = onIdleTap
   onReadyRef.current = onReady
   onFontSizeRef.current = onFontSizeChange
@@ -255,18 +234,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   }
 
   const selectWordAt = (doc: Document, x: number, y: number) => {
-    const point = rangeFromPoint(doc, x, y)
-    const sel = doc.getSelection()
-    if (!point || !sel) return
-    sel.removeAllRanges()
-    sel.addRange(point)
-    const win = doc.defaultView
-    try {
-      win?.getSelection()?.modify('move', 'backward', 'word')
-      win?.getSelection()?.modify('extend', 'forward', 'word')
-    } catch {
-      /* modify() missing */
-    }
+    selectWordAtPoint(doc, x, y)
   }
 
   const extendSelectionTo = (doc: Document, x: number, y: number) => {
@@ -385,10 +353,50 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     return sel
   }
 
+  const paintSelOverlay = (doc: Document, range: Range) => {
+    let layer = doc.getElementById('lg-sel-layer') as HTMLElement | null
+    if (!layer) {
+      layer = doc.createElement('div')
+      layer.id = 'lg-sel-layer'
+      Object.assign(layer.style, {
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        width: '0',
+        height: '0',
+        pointerEvents: 'none',
+        zIndex: '40',
+      })
+      doc.body.append(layer)
+    }
+    layer.replaceChildren()
+    const win = doc.defaultView
+    const sx = win?.scrollX ?? 0
+    const sy = win?.scrollY ?? 0
+    for (const r of Array.from(range.getClientRects())) {
+      if (r.width <= 0 || r.height <= 0) continue
+      const box = doc.createElement('div')
+      box.className = 'lg-sel-box'
+      Object.assign(box.style, {
+        position: 'absolute',
+        left: `${r.left + sx}px`,
+        top: `${r.top + sy}px`,
+        width: `${r.width}px`,
+        height: `${r.height}px`,
+      })
+      layer.append(box)
+    }
+  }
+
+  const clearSelOverlay = (doc: Document) => {
+    doc.getElementById('lg-sel-layer')?.replaceChildren()
+  }
+
   const clearHandles = (doc: Document) => {
     doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
     savedRanges.current.delete(doc)
     clearSelHighlight(doc)
+    clearSelOverlay(doc)
   }
 
   const paintParagraphMarks = () => {
@@ -396,12 +404,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (!view?.renderer) return
     for (const { doc, index } of view.renderer.getContents()) {
       if (!doc) continue
-      doc.documentElement.classList.toggle('lg-show-marks', showMarksRef.current)
-      doc.querySelectorAll('.lg-pmark').forEach((n) => n.remove())
-      if (!showMarksRef.current) continue
       const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+      const visible: HTMLElement[] = []
       for (const block of nodes) {
-        if (!(block instanceof HTMLElement)) continue
+        if (!isHtmlElement(block)) continue
         const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
         if (quote.length < 2) continue
         const range = doc.createRange()
@@ -411,27 +417,48 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           continue
         }
         const cfi = view.getCFI(index, range)
-        const on = bookmarksRef.current.some(
+        const saved = bookmarksRef.current.some(
           (b) => b.cfi === cfi || (b.kind === 'paragraph' && b.quote === quote),
         )
-        const btn = doc.createElement('button')
-        btn.type = 'button'
-        btn.className = `lg-pmark${on ? ' on' : ''}`
-        btn.setAttribute('aria-label', on ? 'Edit bookmark' : 'Bookmark paragraph')
-        btn.addEventListener('click', (e) => {
+        const focused = markFocusRef.current === block
+        if (!saved && !focused) continue
+        visible.push(block)
+        let btn = block.querySelector('.lg-pmark') as HTMLButtonElement | null
+        if (!btn) {
+          btn = doc.createElement('button')
+          btn.type = 'button'
+          btn.className = 'lg-pmark'
+          block.prepend(btn)
+        }
+        btn.className = `lg-pmark${saved ? ' on' : ''}`
+        btn.setAttribute('aria-label', saved ? 'Edit bookmark' : 'Bookmark paragraph')
+        const open = (e: Event) => {
           e.preventDefault()
           e.stopPropagation()
-          const r = btn.getBoundingClientRect()
+          const r = btn!.getBoundingClientRect()
           const vp = toViewport(doc, r.left, r.top)
           onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
-        })
-        block.prepend(btn)
+        }
+        btn.onclick = open
+        btn.ontouchend = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          open(e)
+        }
       }
+      doc.querySelectorAll('.lg-pmark').forEach((n) => {
+        const host = n.parentElement
+        if (!host || !visible.includes(host)) n.remove()
+      })
+      doc.documentElement.classList.toggle('lg-show-marks', visible.length > 0)
     }
   }
 
-  const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
-    const hit = doc.elementFromPoint(clientX, clientY)
+  const handleContentTap = (doc: Document, clientX: number, clientY: number, target?: EventTarget | null) => {
+    const fromTarget = isElement(target) ? target : null
+    const hit =
+      fromTarget?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote, a, img, button, .lg-pmark, .lg-sel-handle') ||
+      doc.elementFromPoint(clientX, clientY)
     if (hit?.closest('a, img, video, audio, button, .lg-pmark, .lg-sel-handle')) {
       return
     }
@@ -440,7 +467,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       doc.getSelection()?.removeAllRanges()
       onSelectionRef.current(null)
       viewRef.current?.deselect()
-      return
     }
     const existing = hitAnnotation(doc, clientX, clientY)
     const now = Date.now()
@@ -474,15 +500,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     prev.timer = window.setTimeout(() => {
       const block = hit?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote')
-      if (block) {
-        showMarksRef.current = true
+      if (isElement(block)) {
+        markFocusRef.current = block
         paintParagraphMarks()
-        onShowMarksRef.current?.(true)
         return
       }
-      showMarksRef.current = false
+      markFocusRef.current = null
       paintParagraphMarks()
-      onShowMarksRef.current?.(false)
       onIdleTapRef.current?.()
     }, 300)
   }
@@ -518,7 +542,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const range = sel.getRangeAt(0)
     const box = rangeBox(range)
     savedRanges.current.set(doc, range.cloneRange())
-    const painted = paintSelHighlight(doc, range)
+    paintSelHighlight(doc, range)
+    paintSelOverlay(doc, range)
+    const win = doc.defaultView
+    const sx = win?.scrollX ?? 0
+    const sy = win?.scrollY ?? 0
     const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
       let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
       if (!el) {
@@ -530,10 +558,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       el.style.left = `${x - 14}px`
       el.style.top = `${y}px`
     }
-    placeHandle('start', box.start.left, box.start.top - 14)
-    placeHandle('end', box.end.right, box.end.bottom - 30)
+    placeHandle('start', box.start.left + sx, box.start.top + sy - 14)
+    placeHandle('end', box.end.right + sx, box.end.bottom + sy - 30)
     onSelectionRef.current(info)
-    if (!keepNative && painted) hideNativeSelection(doc)
+    if (!keepNative) hideNativeSelection(doc)
   }
 
   const bindTextSelection = (doc: Document) => {
@@ -547,6 +575,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       t: number
       selecting: boolean
       fromTouch: boolean
+      handledTap: boolean
       handle: 'start' | 'end' | null
       anchorNode: Node | null
       anchorOffset: number
@@ -557,6 +586,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       t: 0,
       selecting: false,
       fromTouch: false,
+      handledTap: false,
       handle: null,
       anchorNode: null,
       anchorOffset: 0,
@@ -670,8 +700,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
+          const target = e.target as HTMLElement | null
+          if (target?.closest?.('.lg-pmark, a, button')) return
           e.stopPropagation()
-          handleContentTap(doc, t.clientX, t.clientY)
+          state.handledTap = true
+          handleContentTap(doc, t.clientX, t.clientY, e.target)
         }
       }
       state.selecting = false
@@ -680,14 +713,16 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
     doc.addEventListener('click', (ev) => {
-      if (state.fromTouch) {
+      if (ev.defaultPrevented) return
+      if (state.handledTap) {
+        state.handledTap = false
         state.fromTouch = false
         return
       }
-      if (ev.defaultPrevented) return
+      state.fromTouch = false
       const sel = doc.getSelection()
-      if (sel && !sel.isCollapsed) return
-      handleContentTap(doc, ev.clientX, ev.clientY)
+      if (sel && !sel.isCollapsed && savedRanges.current.has(doc)) return
+      handleContentTap(doc, ev.clientX, ev.clientY, ev.target)
     })
   }
 
@@ -857,8 +892,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         emitDocSelection(doc)
       })
       doc.addEventListener('click', (ev) => {
-        const img = (ev.target as HTMLElement | null)?.closest?.('img')
-        if (img instanceof HTMLImageElement) {
+        const img = isElement(ev.target) ? ev.target.closest('img') : null
+        if (isHtmlImage(img)) {
           ev.preventDefault()
           ev.stopPropagation()
           onImageRef.current({ src: img.src, alt: img.alt || img.title || '' })
@@ -1016,10 +1051,18 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (!view?.renderer || pinchRef.current.active) return
     applyRendererLayout(view.renderer, settings)
     view.renderer.setStyles?.(buildReaderCSS(settings))
+    const publisher = usesPublisherFont(settings.fontFamily)
     for (const part of view.renderer.getContents()) {
-      part.doc?.documentElement.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-      part.doc?.documentElement.style.setProperty('font-family', settings.fontFamily, 'important')
-      part.doc?.body?.style.setProperty('font-family', settings.fontFamily, 'important')
+      const root = part.doc?.documentElement
+      const body = part.doc?.body
+      root?.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
+      if (publisher) {
+        root?.style.removeProperty('font-family')
+        body?.style.removeProperty('font-family')
+      } else {
+        root?.style.setProperty('font-family', settings.fontFamily, 'important')
+        body?.style.setProperty('font-family', settings.fontFamily, 'important')
+      }
     }
   }, [settings])
 
@@ -1034,8 +1077,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(`ann-${rec.id}`)
       if (view.renderer) {
         for (const { doc } of view.renderer.getContents()) {
-          const highlights = doc?.defaultView?.CSS?.highlights
+          if (!doc) continue
+          const highlights = doc.defaultView?.CSS?.highlights
           highlights?.delete(`ann-${rec.id}`)
+          unwrapAnnotation(doc, rec.id)
         }
       }
     }
@@ -1047,7 +1092,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
   useEffect(() => {
     paintParagraphMarks()
-  }, [showParagraphMarks, bookmarks])
+  }, [bookmarks])
 
   useEffect(() => {
     const host = rootRef.current

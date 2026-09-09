@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
+import { HIGHLIGHT_COLORS, TEXT_COLORS, colorForStyle } from '../settings/defaults'
 import { ColorRow } from './ColorRow'
 
 interface Props {
@@ -13,7 +14,6 @@ interface Props {
   anchor?: { left: number; top: number; right: number; bottom: number } | null
   onHighlight: (style: AnnotationStyle, color: string) => void
   onNote: () => void
-  onBookmark: () => void
   onSearch: () => void
   onShare: () => void
   onCopy: () => void
@@ -42,7 +42,6 @@ export function SelectionToolbar({
   anchor,
   onHighlight,
   onNote,
-  onBookmark,
   onSearch,
   onShare,
   onCopy,
@@ -55,6 +54,8 @@ export function SelectionToolbar({
   const [moreOpen, setMoreOpen] = useState(false)
   const popRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ top: 0, left: 8 })
+  const styleRef = useRef(style)
+  styleRef.current = style
 
   useEffect(() => {
     if (visible) {
@@ -91,9 +92,10 @@ export function SelectionToolbar({
   if (!visible) return null
 
   const apply = (nextStyle: AnnotationStyle, nextColor = color) => {
+    const ink = colorForStyle(nextStyle, nextColor)
     setStyle(nextStyle)
-    setColor(nextColor)
-    onHighlight(nextStyle, nextColor)
+    setColor(ink)
+    onHighlight(nextStyle, ink)
   }
 
   return (
@@ -112,12 +114,7 @@ export function SelectionToolbar({
             className={`sel-icon ${item.className ?? ''} ${style === item.id ? 'on' : ''}`}
             aria-label={item.label}
             aria-pressed={style === item.id}
-            onClick={() => {
-              setStyle(item.id)
-              if (item.id === 'bold' || item.id === 'italic' || item.id === 'strike' || item.id === 'squiggly') {
-                onHighlight(item.id, color)
-              }
-            }}
+            onClick={() => apply(item.id, color)}
           >
             {item.mark}
           </button>
@@ -125,13 +122,14 @@ export function SelectionToolbar({
       </div>
       <ColorRow
         color={color}
+        colors={style === 'textColor' ? [...TEXT_COLORS] : [...HIGHLIGHT_COLORS]}
         customColors={customColors}
         wheelOpen={wheelOpen}
         onToggleWheel={() => {
           setMoreOpen(false)
           setWheelOpen((v) => !v)
         }}
-        onPick={(c) => apply(style, c)}
+        onPick={(c) => apply(styleRef.current, c)}
         onWheelChange={setColor}
         onWheelCommit={(c) => apply(style, c)}
       />
@@ -149,9 +147,6 @@ export function SelectionToolbar({
         </button>
         <button className="sel-btn" onClick={onCopy}>
           Copy
-        </button>
-        <button className="sel-btn" onClick={onBookmark}>
-          Bookmark
         </button>
         <button className="sel-btn" onClick={onSearch}>
           {defineLabel}

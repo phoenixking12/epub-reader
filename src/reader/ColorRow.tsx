@@ -3,6 +3,7 @@ import { ColorWheel } from './ColorWheel'
 
 interface Props {
   color: string
+  colors?: string[]
   customColors?: string[]
   wheelOpen: boolean
   onToggleWheel: () => void
@@ -13,6 +14,7 @@ interface Props {
 
 export function ColorRow({
   color,
+  colors = HIGHLIGHT_COLORS,
   customColors = [],
   wheelOpen,
   onToggleWheel,
@@ -23,7 +25,7 @@ export function ColorRow({
   return (
     <>
       <div className="color-row compact">
-        {HIGHLIGHT_COLORS.map((c) => (
+        {colors.map((c) => (
           <button
             key={c}
             type="button"

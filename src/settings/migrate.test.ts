@@ -25,4 +25,18 @@ describe('migrateDisplay', () => {
   it('keeps a custom side margin', () => {
     expect(migrateDisplay({ ...DEFAULT_DISPLAY, margin: 36 }).margin).toBe(36)
   })
+
+  it('moves the old default typeface to As printed so publisher CSS can show', () => {
+    const next = migrateDisplay({ fontFamily: '"Source Serif 4", Georgia, serif', justify: true })
+    expect(next.fontFamily).toBe('publisher')
+    expect(next.justify).toBe(false)
+  })
+
+  it('keeps Source Serif after the reader has already moved to schema 1', () => {
+    const next = migrateDisplay({
+      fontFamily: '"Source Serif 4", Georgia, serif',
+      textSchema: 1,
+    })
+    expect(next.fontFamily).toBe('"Source Serif 4", Georgia, serif')
+  })
 })

@@ -36,9 +36,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const file = useBookFile(book?.fileKey)
   const host = useRef<FoliateHandle>(null)
   const topRef = useRef<HTMLElement>(null)
-  const [chrome, setChrome] = useState(false)
-  const [chromeH, setChromeH] = useState(0)
-  const [marksOn, setMarksOn] = useState(false)
+      const [chrome, setChrome] = useState(false)
+      const [chromeH, setChromeH] = useState(0)
   const [drawer, setDrawer] = useState(false)
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('nav')
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('toc')
@@ -210,7 +209,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
         settings={settingsRow.display}
         annotations={annotations}
         bookmarks={bookmarks}
-        showParagraphMarks={showChrome || marksOn}
         onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
           setFrac(fraction)
           setChapterFrac(sectionFraction)
@@ -256,17 +254,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onTapCenter={() => {
           setMenuOpen(false)
-          setChrome((v) => {
-            const next = !v
-            setMarksOn(next)
-            return next
-          })
+          setChrome((v) => !v)
         }}
-        onShowMarks={setMarksOn}
         onIdleTap={() => {
           setChrome(false)
           setMenuOpen(false)
-          setMarksOn(false)
         }}
         onFontSizeChange={(size) => void patchDisplay({ fontSize: size })}
       />
@@ -433,8 +425,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onHighlight={(style, color) => {
           if (!selection) return
           void (async () => {
-            if (selectedAnn) await db.annotations.update(selectedAnn.id, { style, color })
-            else await addAnnotation(selection, style, color)
+            if (selectedAnn) {
+              await db.annotations.update(selectedAnn.id, { style, color })
+            } else {
+              const rec = await addAnnotation(selection, style, color)
+              setSelection({ ...selection, annotationId: rec.id })
+            }
             await saveSettings({
               display: {
                 ...settingsRow.display,
@@ -443,9 +439,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
                 customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
               },
             })
-            host.current?.deselect()
-            setSelection(null)
-            setChrome(true)
           })()
         }}
         onNote={() => {
@@ -458,17 +451,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
             setNoteFor(selection)
             setNoteText('')
           }
-        }}
-        onBookmark={() => {
-          if (!selection) return
-          openBookmarkSheet({
-            cfi: selection.cfi,
-            quote: selection.text,
-            kind: 'selection',
-            title: selection.text.slice(0, 48),
-          })
-          host.current?.deselect()
-          setSelection(null)
         }}
         onSearch={() => {
           if (!selection) return

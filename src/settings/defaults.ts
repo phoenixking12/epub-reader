@@ -9,18 +9,21 @@ import type {
   SettingsRecord,
 } from '../types/models'
 
+export const PUBLISHER_FONT = 'publisher'
+const LEGACY_DEFAULT_FONT = '"Source Serif 4", Georgia, serif'
+
 export const DEFAULT_DISPLAY: DisplaySettings = {
   theme: 'sepia',
   customBg: '#f4efe6',
   customFg: '#1c1917',
   customLink: '#9a3412',
-  fontFamily: '"Source Serif 4", Georgia, serif',
+  fontFamily: PUBLISHER_FONT,
   fontSize: 18,
   lineHeight: 1.55,
   margin: 8,
   maxInlineSize: 720,
   gap: 7,
-  justify: true,
+  justify: false,
   hyphenate: true,
   flow: 'paginated',
   pageTurnMode: 'swipe',
@@ -33,6 +36,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   defaultAnnotationStyle: 'highlight',
   defaultAnnotationColor: '#facc15',
   invertImagesInNight: false,
+  textSchema: 1,
 }
 
 export const THEMES: Record<
@@ -45,6 +49,7 @@ export const THEMES: Record<
 }
 
 export const BUNDLED_FONTS = [
+  { id: 'publisher', label: 'As printed', value: PUBLISHER_FONT },
   { id: 'source-serif', label: 'Source Serif', value: '"Source Serif 4", Georgia, serif' },
   { id: 'literata', label: 'Literata', value: 'Literata, Georgia, serif' },
   { id: 'newsreader', label: 'Newsreader', value: 'Newsreader, Georgia, serif' },
@@ -65,6 +70,24 @@ export const HIGHLIGHT_COLORS = [
   '#fca5a5',
   '#e7e5e4',
 ]
+
+export const TEXT_COLORS = [
+  '#b91c1c',
+  '#c2410c',
+  '#a16207',
+  '#15803d',
+  '#1d4ed8',
+  '#6d28d9',
+  '#be185d',
+  '#0f172a',
+]
+
+export function colorForStyle(style: DisplaySettings['defaultAnnotationStyle'], color: string) {
+  if (style !== 'textColor') return color
+  if (TEXT_COLORS.includes(color as (typeof TEXT_COLORS)[number])) return color
+  if (HIGHLIGHT_COLORS.includes(color as (typeof HIGHLIGHT_COLORS)[number])) return TEXT_COLORS[0]
+  return color
+}
 
 export const DEFAULT_SETTINGS: SettingsRecord = {
   id: 'global',
@@ -89,13 +112,25 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   const pageTurnMode: PageTurnMode =
     display?.pageTurnMode ?? (display?.flow === 'scrolled' ? 'scroll' : DEFAULT_DISPLAY.pageTurnMode)
   const margin = display?.margin === 24 || display?.margin == null ? 8 : merged.margin
+  const priorSchema = display?.textSchema ?? 0
+  let fontFamily = merged.fontFamily
+  let justify = merged.justify ?? false
+  if (priorSchema < 1) {
+    if (!display?.fontFamily || display.fontFamily === LEGACY_DEFAULT_FONT) {
+      fontFamily = PUBLISHER_FONT
+      justify = false
+    }
+  }
   return {
     ...merged,
+    fontFamily,
+    justify,
     margin,
     pageTurnMode,
     flow: flowForPageTurn(pageTurnMode),
     customHighlightColors: merged.customHighlightColors ?? [],
     brightnessMode: merged.brightnessMode ?? 'auto',
+    textSchema: Math.max(priorSchema, 1),
   }
 }
 

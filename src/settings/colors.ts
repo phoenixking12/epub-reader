@@ -1,4 +1,4 @@
-import { HIGHLIGHT_COLORS } from './defaults'
+import { HIGHLIGHT_COLORS, TEXT_COLORS } from './defaults'
 
 export const MAX_CUSTOM_COLORS = 12
 
@@ -11,7 +11,7 @@ export function normalizeHex(color: string): string {
 
 export function isPresetHighlight(color: string): boolean {
   const n = normalizeHex(color)
-  return HIGHLIGHT_COLORS.some((c) => normalizeHex(c) === n)
+  return [...HIGHLIGHT_COLORS, ...TEXT_COLORS].some((c) => normalizeHex(c) === n)
 }
 
 export function rememberCustomColor(list: string[] | undefined, hex: string): string[] {

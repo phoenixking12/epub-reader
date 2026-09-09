@@ -389,7 +389,12 @@ class View {
         } else {
             const side = this.#vertical ? 'width' : 'height'
             const otherSide = this.#vertical ? 'height' : 'width'
-            const contentSize = documentElement.getBoundingClientRect()[side]
+            const doc = this.document
+            const rectSize = Math.max(0, this.#contentRange.getBoundingClientRect()[side] || 0)
+            const scrollSize = this.#vertical
+                ? Math.max(documentElement.scrollWidth, doc.body?.scrollWidth || 0)
+                : Math.max(documentElement.scrollHeight, doc.body?.scrollHeight || 0)
+            const contentSize = Math.max(rectSize, scrollSize, 1)
             const expandedSize = contentSize
             const { margin } = this.#layout
             const padding = this.#vertical ? `0 ${margin}px` : `${margin}px 0`
@@ -791,6 +796,10 @@ export class Paginator extends HTMLElement {
         return Math.round(this.viewSize / this.size)
     }
     scrollBy(dx, dy) {
+        if (this.scrolled) {
+            this.#container[this.scrollProp] += this.#vertical ? dx : dy
+            return
+        }
         const delta = this.#vertical ? dy : dx
         const element = this.#container
         const { scrollProp } = this
@@ -833,14 +842,13 @@ export class Paginator extends HTMLElement {
     }
     #onTouchMove(e) {
         const state = this.#touchState
-        if (state.pinched) return
+        if (!state || state.pinched) return
         state.pinched = globalThis.visualViewport.scale > 1
-        if (this.scrolled || state.pinched) return
+        if (state.pinched) return
         if (e.touches.length > 1) {
             if (this.#touchScrolled) e.preventDefault()
             return
         }
-        e.preventDefault()
         const touch = e.changedTouches[0]
         const x = touch.screenX, y = touch.screenY
         const dx = state.x - x, dy = state.y - y
@@ -850,6 +858,13 @@ export class Paginator extends HTMLElement {
         state.t = e.timeStamp
         state.vx = dx / dt
         state.vy = dy / dt
+        if (this.scrolled) {
+            e.preventDefault()
+            this.#touchScrolled = true
+            this.#container[this.scrollProp] += this.#vertical ? dx : dy
+            return
+        }
+        e.preventDefault()
         this.#touchScrolled = true
         this.scrollBy(dx, dy)
     }

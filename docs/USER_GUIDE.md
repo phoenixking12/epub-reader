@@ -19,7 +19,7 @@ You get **two** icon buttons and the title in the middle:
 
 If **Display → Buttons** is on, previous/next page buttons appear as well (**four** buttons total).
 
-The page shifts down so the bar does not cover the first lines.
+The page shifts down so the bar does not cover the first lines. The bar also sits below the phone’s status / notification icons.
 
 The corner shows **book and chapter percent** while you scroll, or **chapter page n / N** in page modes.
 
@@ -36,7 +36,7 @@ In **Menu → Display → Turn pages**:
 
 ## Bookmarks
 
-**Single-tap a paragraph** to show bookmark dots beside the text. Tap a dot, name the bookmark, and find it under **Library → Bookmarks**.
+**Single-tap a word** to show a bookmark ribbon beside that paragraph (or heading). Tap the ribbon, name the bookmark, and find it under **Library → Bookmarks**. Saved ribbons stay visible.
 
 **Bookmark this page** in Menu saves the current place.
 
@@ -44,9 +44,13 @@ In **Menu → Display → Turn pages**:
 
 1. Long-press a word, then drag the orange handles to set the start and end.
 2. The tool panel appears **above** the selection.
-3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once.
+3. Tap **Highlight**, **Underline**, or **Font color** to apply, then a color if you want another. Bold, italic, strike, and squiggle apply at once.
 4. Tap an existing mark to select the whole span, then change its color/style or **Remove**.
 5. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
+
+## Typeface
+
+**Menu → Text → Typeface → As printed** keeps the EPUB’s fonts and heading styles. Pick another face or turn **Justified** on to override. Headings stay larger than body copy.
 
 ## Brightness
 
@@ -57,7 +61,8 @@ In **Menu → Display → Turn pages**:
 | Gesture | Result |
 | --- | --- |
 | Double-tap | Show or hide Library and Menu |
-| Single-tap a paragraph | Show bookmark dots |
+| Single-tap a word | Show a bookmark ribbon on that paragraph |
+| Single-tap the ribbon | Name or edit the paragraph bookmark |
 | Single-tap a highlight | Select the whole mark |
 | Tap away from a selection | Drop the selection |
 | Swipe (in Swipe mode) | Turn the page |
