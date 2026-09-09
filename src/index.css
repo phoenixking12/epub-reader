@@ -1,5 +1,7 @@
 :root {
   color-scheme: dark;
+  --lg-sat: env(safe-area-inset-top, 0px);
+  --lg-sab: env(safe-area-inset-bottom, 0px);
   --ink: #1c1917;
   --paper: #f4efe6;
   --accent: #c2410c;
@@ -40,7 +42,8 @@ img { max-width: 100%; }
 .library, .settings {
   min-height: 100%;
   padding: 20px 20px 120px;
-  padding-bottom: max(120px, env(safe-area-inset-bottom, 0px) + 96px);
+  padding-top: calc(12px + var(--lg-sat));
+  padding-bottom: max(120px, calc(var(--lg-sab) + 96px));
   max-width: 960px;
   margin: 0 auto;
 }
@@ -260,7 +263,7 @@ select option { background: #1c1917; color: #fafaf9; }
 .fab-row {
   position: fixed;
   right: max(16px, env(safe-area-inset-right, 0px));
-  bottom: max(20px, env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: max(20px, calc(var(--lg-sab) + 12px));
   z-index: 5;
 }
 .fab.ghost, .chip.ghost {
@@ -294,10 +297,12 @@ select option { background: #1c1917; color: #fafaf9; }
 .foliate-host {
   position: absolute;
   inset: 0;
+  top: var(--lg-sat);
+  bottom: var(--lg-sab);
   touch-action: pan-x pan-y;
 }
 .reader.chrome-on .foliate-host {
-  top: max(48px, var(--chrome-h));
+  top: var(--chrome-h, 48px);
 }
 .foliate-host foliate-view {
   display: block;
@@ -326,8 +331,8 @@ select option { background: #1c1917; color: #fafaf9; }
   top: 0;
   flex-wrap: nowrap;
   min-height: 44px;
-  padding-top: max(2px, env(safe-area-inset-top, 0px));
-  padding-bottom: 2px;
+  padding-top: var(--lg-sat);
+  padding-bottom: 4px;
   padding-left: 8px;
   padding-right: 8px;
   overflow: visible;
@@ -609,7 +614,7 @@ select option { background: #1c1917; color: #fafaf9; }
   color: #fafaf9;
   border: 1px solid #57534e;
   border-radius: 14px;
-  padding: 8px 8px max(10px, env(safe-area-inset-bottom));
+  padding: 8px 8px max(10px, var(--lg-sab));
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 .sel-styles {

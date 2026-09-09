@@ -9,7 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
-import { caretIsTextual, isHugeNativeSelection, wordRangeFromCaret } from './selectWord'
+import { caretIsTextual, isHugeNativeSelection, wordRangeFromHit } from './selectWord'
 
 export interface SelectionInfo {
   cfi: string
@@ -61,6 +61,7 @@ export interface FoliateHandle {
   goToFraction: (n: number) => Promise<void>
   applySettings: (settings: DisplaySettings) => void
   getSelection: () => SelectionInfo | null
+  getLocation: () => { cfi: string; quote: string }
   deselect: () => void
   search: (query: string, regex: boolean) => Promise<SearchHit[]>
   clearSearch: () => void
@@ -257,12 +258,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
   const selectWordAt = (doc: Document, x: number, y: number) => {
     const point = rangeFromPoint(doc, x, y)
+    const hit = doc.elementFromPoint(x, y)
     const sel = doc.getSelection()
-    if (!point || !sel) return
-    const range = wordRangeFromCaret(point)
-    if (!range) return
+    const range = wordRangeFromHit(point, hit instanceof Element ? hit : null)
+    if (!range || !sel) return false
     sel.removeAllRanges()
     sel.addRange(range)
+    return true
   }
 
   const extendSelectionTo = (doc: Document, x: number, y: number) => {
@@ -307,6 +309,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
   }
 
+  const cfiFor = (index: number, range?: Range) => {
+    const view = viewRef.current
+    if (!view) return ''
+    try {
+      return view.getCFI(index, range)
+    } catch {
+      try {
+        return view.getCFI(index)
+      } catch {
+        return ''
+      }
+    }
+  }
+
   const selectionFromDoc = (doc: Document, overlayCfi?: string): SelectionInfo | null => {
     const view = viewRef.current
     if (!view) return null
@@ -318,7 +334,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const index = view.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
     const box = rangeBox(range)
     const origin = toViewport(doc, 0, 0)
-    const cfi = overlayCfi || view.getCFI(index, range)
+    const cfi = overlayCfi || cfiFor(index, range)
     const rec = annotationsRef.current.find((a) => a.cfiRange === cfi)
     return {
       cfi,
@@ -399,6 +415,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!doc) continue
       doc.documentElement.classList.toggle('lg-show-marks', showMarksRef.current)
       doc.querySelectorAll('.lg-pmark').forEach((n) => n.remove())
+      doc.querySelectorAll('.lg-bookmarked').forEach((n) => n.classList.remove('lg-bookmarked'))
       if (!showMarksRef.current) continue
       const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
       for (const block of nodes) {
@@ -411,29 +428,18 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         } catch {
           continue
         }
-        const cfi = view.getCFI(index, range)
+        const cfi = cfiFor(index, range)
         const on = bookmarksRef.current.some(
           (b) => b.cfi === cfi || (b.kind === 'paragraph' && b.quote === quote),
         )
-        const btn = doc.createElement('button')
-        btn.type = 'button'
-        btn.className = `lg-pmark${on ? ' on' : ''}`
-        btn.setAttribute('aria-label', on ? 'Edit bookmark' : 'Bookmark paragraph')
-        btn.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const r = btn.getBoundingClientRect()
-          const vp = toViewport(doc, r.left, r.top)
-          onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
-        })
-        block.prepend(btn)
+        if (on) block.classList.add('lg-bookmarked')
       }
     }
   }
 
   const handleContentTap = (doc: Document, clientX: number, clientY: number) => {
     const hit = doc.elementFromPoint(clientX, clientY)
-    if (hit?.closest('a, img, video, audio, button, .lg-pmark, .lg-sel-handle')) {
+    if (hit?.closest('a, img, video, audio, button, .lg-sel-handle')) {
       return
     }
     if (savedRanges.current.has(doc) || doc.querySelector('.lg-sel-handle')) {
@@ -475,24 +481,38 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     prev.timer = window.setTimeout(() => {
       const block = hit?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote')
-      if (block) {
+      if (block instanceof HTMLElement) {
+        const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
+        const view = viewRef.current
+        const index = view?.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
+        const range = doc.createRange()
+        try {
+          range.selectNodeContents(block)
+        } catch {
+          return
+        }
+        const cfi = cfiFor(index, range)
+        const vp = toViewport(doc, clientX, clientY)
         showMarksRef.current = true
         paintParagraphMarks()
         onShowMarksRef.current?.(true)
+        if (cfi && quote.length >= 2) {
+          onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
+        }
         return
       }
       showMarksRef.current = false
       paintParagraphMarks()
       onShowMarksRef.current?.(false)
       onIdleTapRef.current?.()
-    }, 300)
+    }, 280)
   }
 
   const suppressNativeUi = (doc: Document) => {
     doc.addEventListener('contextmenu', (e) => e.preventDefault())
   }
 
-  const emitDocSelection = (doc: Document, overlayCfi?: string, keepNative = false) => {
+  const emitDocSelection = (doc: Document, overlayCfi?: string, keepNative = true) => {
     let sel = doc.getSelection()
     if (!sel?.rangeCount || sel.isCollapsed) {
       const saved = savedRanges.current.get(doc)
@@ -541,20 +561,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (selectDocs.current.has(doc)) return
     selectDocs.current.add(doc)
     suppressNativeUi(doc)
-    const state: {
-      timer: number
-      x: number
-      y: number
-      lastX: number
-      lastY: number
-      t: number
-      selecting: boolean
-      panning: boolean
-      fromTouch: boolean
-      handle: 'start' | 'end' | null
-      anchorNode: Node | null
-      anchorOffset: number
-    } = {
+    const state = {
       timer: 0,
       x: 0,
       y: 0,
@@ -564,9 +571,39 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       selecting: false,
       panning: false,
       fromTouch: false,
-      handle: null,
-      anchorNode: null,
+      handle: null as 'start' | 'end' | null,
+      anchorNode: null as Node | null,
       anchorOffset: 0,
+      panDy: 0,
+      panRaf: 0,
+      emitRaf: 0,
+    }
+    const flushPan = () => {
+      state.panRaf = 0
+      const dy = state.panDy
+      state.panDy = 0
+      if (dy) viewRef.current?.renderer?.pan?.(0, dy)
+    }
+    const queuePan = (dy: number) => {
+      state.panDy += dy
+      if (!state.panRaf) state.panRaf = requestAnimationFrame(flushPan)
+    }
+    const emitSoon = () => {
+      if (state.emitRaf) return
+      state.emitRaf = requestAnimationFrame(() => {
+        state.emitRaf = 0
+        emitDocSelection(doc, undefined, true)
+      })
+    }
+    const abortSelectToPan = () => {
+      window.clearTimeout(state.timer)
+      state.selecting = false
+      state.handle = null
+      state.anchorNode = null
+      clearHandles(doc)
+      doc.getSelection()?.removeAllRanges()
+      onSelectionRef.current(null)
+      state.panning = true
     }
     doc.addEventListener(
       'touchstart',
@@ -586,6 +623,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.t = Date.now()
         state.fromTouch = true
         state.panning = false
+        state.panDy = 0
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
         if (handleEl) {
@@ -605,18 +643,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           }
           return
         }
-        if (target?.closest?.('.lg-pmark, a, button')) {
+        if (target?.closest?.('a, button')) {
           state.selecting = false
           return
         }
         state.selecting = false
         state.handle = null
         state.timer = window.setTimeout(() => {
-          state.selecting = true
-          selectWordAt(doc, state.x, state.y)
-          emitDocSelection(doc)
-          navigator.vibrate?.(12)
-        }, 400)
+          if (state.panning) return
+          if (selectWordAt(doc, state.x, state.y)) {
+            state.selecting = true
+            emitDocSelection(doc, undefined, true)
+            navigator.vibrate?.(12)
+          }
+        }, 350)
       },
       { capture: true, passive: false },
     )
@@ -626,6 +666,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (e.touches.length !== 1) return
         const t = e.touches[0]
         const moved = Math.hypot(t.clientX - state.x, t.clientY - state.y)
+        const totalX = t.clientX - state.x
+        const totalY = t.clientY - state.y
+        const dy = t.clientY - state.lastY
+        const scrollMode = settingsRef.current.pageTurnMode === 'scroll'
         if (state.handle && state.anchorNode) {
           e.preventDefault()
           e.stopPropagation()
@@ -638,39 +682,45 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           } catch {
             extendSelectionTo(doc, t.clientX, t.clientY)
           }
-          emitDocSelection(doc)
+          emitSoon()
           return
         }
+        if (moved > 8) window.clearTimeout(state.timer)
+        if (state.selecting && scrollMode && Math.abs(totalY) > 22 && Math.abs(totalY) > Math.abs(totalX) * 1.15) {
+          abortSelectToPan()
+        }
         if (!state.selecting) {
-          if (moved > 12) window.clearTimeout(state.timer)
-          const mode = settingsRef.current.pageTurnMode
-          if (mode === 'scroll' && !state.handle) {
-            const dy = t.clientY - state.lastY
-            const totalX = t.clientX - state.x
-            const totalY = t.clientY - state.y
-            if (state.panning || (Math.abs(totalY) > 8 && Math.abs(totalY) > Math.abs(totalX) * 0.85)) {
-              state.panning = true
-              e.preventDefault()
-              e.stopPropagation()
-              viewRef.current?.renderer?.pan?.(0, -dy)
-              state.lastX = t.clientX
-              state.lastY = t.clientY
-            }
+          if (scrollMode && (state.panning || (Math.abs(totalY) > 8 && Math.abs(totalY) > Math.abs(totalX) * 0.85))) {
+            state.panning = true
+            e.preventDefault()
+            e.stopPropagation()
+            queuePan(-dy)
+            state.lastX = t.clientX
+            state.lastY = t.clientY
           }
           return
         }
         e.preventDefault()
         e.stopPropagation()
         extendSelectionTo(doc, t.clientX, t.clientY)
-        emitDocSelection(doc)
+        emitSoon()
+        state.lastX = t.clientX
+        state.lastY = t.clientY
       },
       { capture: true, passive: false },
     )
     const endSelect = (e: TouchEvent) => {
       window.clearTimeout(state.timer)
+      if (state.panRaf) {
+        cancelAnimationFrame(state.panRaf)
+        flushPan()
+      }
+      if (state.emitRaf) {
+        cancelAnimationFrame(state.emitRaf)
+        state.emitRaf = 0
+      }
       if (state.selecting || state.handle) {
-        e.stopPropagation()
-        emitDocSelection(doc)
+        emitDocSelection(doc, undefined, true)
         state.selecting = false
         state.handle = null
         state.panning = false
@@ -702,7 +752,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
-          e.stopPropagation()
           handleContentTap(doc, t.clientX, t.clientY)
         }
       }
@@ -801,12 +850,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       for (const { doc } of view.renderer.getContents()) {
         restoreSavedRange(doc)
         const info = selectionFromDoc(doc)
-        if (info) {
-          hideNativeSelection(doc)
-          return info
-        }
+        if (info) return info
       }
       return null
+    },
+    getLocation: () => {
+      const view = viewRef.current
+      if (!view) return { cfi: '', quote: '' }
+      const loc = view.lastLocation
+      if (loc?.cfi) {
+        return { cfi: loc.cfi, quote: loc.tocItem?.label || '' }
+      }
+      const part = view.renderer?.getContents()?.[0]
+      if (part) return { cfi: cfiFor(part.index), quote: '' }
+      return { cfi: '', quote: '' }
     },
     deselect: () => {
       const view = viewRef.current

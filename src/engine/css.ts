@@ -28,10 +28,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       margin: 0 !important;
       padding: 0 !important;
       touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'manipulation'};
-      -webkit-user-select: none;
-      user-select: none;
+      -webkit-user-select: text !important;
+      user-select: text !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
       ${writing}
     }
     body {
@@ -42,13 +43,18 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       margin: 0 !important;
       padding: 0 !important;
       touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'manipulation'};
-      -webkit-user-select: none;
-      user-select: none;
+      -webkit-user-select: text !important;
+      user-select: text !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
     * {
       -webkit-touch-callout: none !important;
+    }
+    p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, td, th, span, a {
+      -webkit-user-select: text !important;
+      user-select: text !important;
     }
     body, p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, div, section, article, aside, td, th, span, a {
       font-family: ${settings.fontFamily} !important;
@@ -71,52 +77,29 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       background-color: color-mix(in srgb, #ea580c 38%, transparent);
       color: inherit;
     }
-    .lg-pmark {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 28px !important;
-      height: 28px !important;
-      min-width: 0 !important;
-      min-height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      border-radius: 50% !important;
-      transform: translate(-8px, -4px);
-      background: transparent !important;
-      box-shadow: none !important;
-      font-size: 0 !important;
-      line-height: 0 !important;
-      cursor: pointer;
-      z-index: 4;
-      pointer-events: auto;
-    }
-    .lg-pmark::before {
+    html.lg-show-marks p::before,
+    html.lg-show-marks h1::before,
+    html.lg-show-marks h2::before,
+    html.lg-show-marks h3::before,
+    html.lg-show-marks h4::before,
+    html.lg-show-marks h5::before,
+    html.lg-show-marks h6::before,
+    html.lg-show-marks li::before,
+    html.lg-show-marks blockquote::before {
       content: "";
       position: absolute;
-      left: 50%;
-      top: 50%;
+      left: 0;
+      top: 0.45em;
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      transform: translate(-50%, -50%);
       background: ${bg};
       box-shadow: inset 0 0 0 1.5px ${link};
+      pointer-events: none;
+      z-index: 4;
     }
-    .lg-pmark.on::before {
+    html.lg-show-marks .lg-bookmarked::before {
       background: ${link};
-    }
-    .lg-pmark.on::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: ${bg};
-      transform: translate(-50%, -50%);
     }
     .lg-sel-handle {
       position: fixed;

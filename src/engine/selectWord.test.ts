@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHugeNativeSelection, wordBounds, wordRangeFromCaret } from './selectWord'
+import { isHugeNativeSelection, wordBounds, wordRangeFromCaret, wordRangeFromHit } from './selectWord'
 
 describe('wordBounds', () => {
   it('selects the word under the caret', () => {
@@ -36,6 +36,16 @@ describe('wordRangeFromCaret', () => {
     caret.setStart(doc.body, 0)
     caret.collapse(true)
     expect(wordRangeFromCaret(caret)).toBeNull()
+  })
+
+  it('falls back to the paragraph under the finger when the caret is on the body', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p>Hello world</p>'
+    const p = doc.querySelector('p')!
+    const caret = doc.createRange()
+    caret.setStart(doc.body, 0)
+    caret.collapse(true)
+    expect(wordRangeFromHit(caret, p)?.toString()).toBe('Hello')
   })
 })
 

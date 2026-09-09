@@ -6,6 +6,7 @@ import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
 
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -46,17 +47,26 @@ public class MainActivity extends BridgeActivity {
             ViewGroup.LayoutParams raw = v.getLayoutParams();
             if (raw instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
-                lp.topMargin = status.top;
-                lp.bottomMargin = nav.bottom;
+                lp.topMargin = 0;
+                lp.bottomMargin = 0;
+                lp.leftMargin = 0;
+                lp.rightMargin = 0;
                 v.setLayoutParams(lp);
-                v.setPadding(0, 0, 0, 0);
-            } else {
-                v.setPadding(0, status.top, 0, nav.bottom);
+            }
+            v.setPadding(0, 0, 0, 0);
+            String js =
+                    "document.documentElement.style.setProperty('--lg-sat','"
+                            + status.top
+                            + "px');"
+                            + "document.documentElement.style.setProperty('--lg-sab','"
+                            + nav.bottom
+                            + "px');";
+            if (v instanceof WebView) {
+                ((WebView) v).evaluateJavascript(js, null);
             }
             return WindowInsetsCompat.CONSUMED;
         });
         ViewCompat.requestApplyInsets(webView);
-        webView.setOnLongClickListener(v -> true);
     }
 
     @Override

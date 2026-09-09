@@ -14,12 +14,13 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/h1:first-child[\s\S]*margin-top: 0/)
   })
 
-  it('keeps paragraph bookmark marks small', () => {
-    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 28px/)
-    expect(css).toMatch(/\.lg-pmark::before \{[\s\S]*width: 8px/)
+  it('keeps paragraph bookmark marks small and untappable', () => {
+    expect(css).toMatch(/html\.lg-show-marks p::before[\s\S]*width: 8px/)
+    expect(css).toMatch(/pointer-events: none/)
   })
 
-  it('disables native text selection so long-press cannot grab the page', () => {
-    expect(css).toMatch(/user-select: none/)
+  it('allows text selection so long-press can highlight a word', () => {
+    expect(css).toMatch(/user-select: text/)
+    expect(css).not.toMatch(/user-select: none/)
   })
 })

@@ -51,6 +51,8 @@ export function caretIsTextual(node: Node): boolean {
   return tag !== 'HTML' && tag !== 'BODY'
 }
 
+const BLOCK_SEL = 'p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, td, th'
+
 export function wordRangeFromCaret(caret: Range): Range | null {
   let node: Node | null = caret.startContainer
   let offset = caret.startOffset
@@ -72,6 +74,23 @@ export function wordRangeFromCaret(caret: Range): Range | null {
   range.setStart(node, start)
   range.setEnd(node, end)
   return range
+}
+
+export function wordRangeFromHit(caret: Range | null, hit: Element | null): Range | null {
+  if (caret) {
+    const word = wordRangeFromCaret(caret)
+    if (word) return word
+  }
+  const block = hit?.closest(BLOCK_SEL)
+  if (!block) return null
+  const doc = block.ownerDocument
+  const walker = doc.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  const textNode = walker.nextNode()
+  if (!textNode?.textContent) return null
+  const next = doc.createRange()
+  next.setStart(textNode, 0)
+  next.collapse(true)
+  return wordRangeFromCaret(next)
 }
 
 export function isHugeNativeSelection(text: string, savedLen = 0): boolean {

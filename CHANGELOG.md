@@ -2,6 +2,16 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.3 — 2026-09-09
+
+### Fixed
+
+- Reading bar sits just under the notification icons: the WebView is fullscreen, and only the chrome is padded (no extra black band)
+- Long-press selects a word and shows the highlight tooltip; the book iframe allows text selection
+- Scroll no longer fights long-press: a pan cancels selection, and selection updates are rAF-throttled so the page does not shake
+- Tap a paragraph, the star on the bar, or **Bookmark this page** to save a place (dots no longer steal the tap)
+- Android versionCode 11 so this APK updates 3.1.2
+
 ## 3.1.2 — 2026-09-09
 
 ### Fixed

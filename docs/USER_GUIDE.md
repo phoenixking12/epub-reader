@@ -12,14 +12,15 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 
 **Double-tap** the page to show or hide the bar.
 
-You get **two** icon buttons and the title in the middle:
+You get the title in the middle, with:
 
 - **☰** — contents, bookmarks, and Library
+- **☆** — bookmark the current place
 - **⋮** — Notes, Text, Display, Color, find, bookmark this page
 
-If **Display → Buttons** is on, previous/next page buttons appear as well (**four** buttons total).
+If **Display → Buttons** is on, previous/next page buttons appear as well.
 
-The page sits just under the notification bar. Double-tap shows a slim title bar; the page shifts down so the bar does not cover the first lines.
+The reading bar sits immediately under the notification icons. The dark bar runs behind the status icons; the buttons sit just below them, with no extra black gap.
 
 The corner shows **book and chapter percent** while you scroll, or **chapter page n / N** in page modes.
 
@@ -36,9 +37,7 @@ In **Menu → Display → Turn pages**:
 
 ## Bookmarks
 
-**Single-tap a paragraph** to show bookmark dots beside the text. Tap a dot, name the bookmark, and find it under **Library → Bookmarks**.
-
-**Bookmark this page** in Menu saves the current place.
+**Single-tap a paragraph** to name a bookmark for that block. **☆** on the reading bar, or **Bookmark this page** in Menu, saves the current place. Find them under **☰ → Bookmarks**.
 
 ## Highlights and notes
 
@@ -57,7 +56,7 @@ In **Menu → Display → Turn pages**:
 | Gesture | Result |
 | --- | --- |
 | Double-tap | Show or hide Library and Menu |
-| Single-tap a paragraph | Show bookmark dots |
+| Single-tap a paragraph | Name a bookmark for that paragraph |
 | Single-tap a highlight | Select the whole mark |
 | Tap away from a selection | Drop the selection |
 | Swipe (in Swipe mode) | Turn the page |

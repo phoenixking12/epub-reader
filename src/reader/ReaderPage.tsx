@@ -325,6 +325,21 @@ export function ReaderPage({ bookId, onBack }: Props) {
           )}
           <button
             className="icon-btn chrome-btn"
+            aria-label="Bookmark this page"
+            onClick={() => {
+              const live = host.current?.getLocation()
+              openBookmarkSheet({
+                cfi: live?.cfi || locationRef.current.cfi || book.progressCfi || '',
+                quote: live?.quote || locationRef.current.quote || loc,
+                kind: 'position',
+                title: live?.quote || locationRef.current.quote || loc || 'Current position',
+              })
+            }}
+          >
+            ☆
+          </button>
+          <button
+            className="icon-btn chrome-btn"
             aria-expanded={menuOpen}
             aria-label="Reading menu"
             onClick={() => setMenuOpen((v) => !v)}
@@ -356,14 +371,15 @@ export function ReaderPage({ bookId, onBack }: Props) {
             setDisplayOpen(true)
           }}
           onFind={() => setSearchOpen(true)}
-          onBookmarkPage={() =>
+          onBookmarkPage={() => {
+            const live = host.current?.getLocation()
             openBookmarkSheet({
-              cfi: locationRef.current.cfi || book.progressCfi,
-              quote: locationRef.current.quote || loc,
+              cfi: live?.cfi || locationRef.current.cfi || book.progressCfi || '',
+              quote: live?.quote || locationRef.current.quote || loc,
               kind: 'position',
-              title: locationRef.current.quote || loc || 'Current position',
+              title: live?.quote || locationRef.current.quote || loc || 'Current position',
             })
-          }
+          }}
           onAudio={() => host.current?.startMediaOverlay()}
         />
       )}
