@@ -15,7 +15,7 @@ describe('buildReaderCSS', () => {
   })
 
   it('keeps paragraph bookmark marks small', () => {
-    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 14px/)
+    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 28px/)
     expect(css).toMatch(/\.lg-pmark::before \{[\s\S]*width: 8px/)
   })
 

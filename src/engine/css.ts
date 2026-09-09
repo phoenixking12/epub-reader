@@ -74,16 +74,16 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     .lg-pmark {
       position: absolute !important;
       left: 0 !important;
-      top: 0.2em !important;
-      width: 14px !important;
-      height: 14px !important;
+      top: 0 !important;
+      width: 28px !important;
+      height: 28px !important;
       min-width: 0 !important;
       min-height: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
       border: 0 !important;
       border-radius: 50% !important;
-      transform: translateX(-1px);
+      transform: translate(-8px, -4px);
       background: transparent !important;
       box-shadow: none !important;
       font-size: 0 !important;
