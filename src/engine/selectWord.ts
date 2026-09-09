@@ -93,6 +93,22 @@ export function wordRangeFromHit(caret: Range | null, hit: Element | null): Rang
   return wordRangeFromCaret(next)
 }
 
+export function nearestBookmarkBlock(hit: Element | null): HTMLElement | null {
+  if (!hit) return null
+  const exact = hit.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption')
+  if (exact instanceof HTMLElement) return exact
+  let el: Element | null = hit
+  let best: HTMLElement | null = null
+  while (el && el.tagName !== 'BODY' && el.tagName !== 'HTML') {
+    if (el instanceof HTMLElement) {
+      const quote = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()
+      if (quote.length >= 8 && quote.length <= 800) best = el
+    }
+    el = el.parentElement
+  }
+  return best
+}
+
 export function isHugeNativeSelection(text: string, savedLen = 0): boolean {
   const trimmed = text.replace(/\s+/g, ' ').trim()
   if (trimmed.length > 400) return true

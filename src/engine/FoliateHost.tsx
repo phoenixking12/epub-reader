@@ -9,7 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
-import { caretIsTextual, isHugeNativeSelection, wordRangeFromHit } from './selectWord'
+import { caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 
 export interface SelectionInfo {
   cfi: string
@@ -482,7 +482,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     prev.timer = window.setTimeout(() => {
-      const block = hit?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote')
+      const fromNode =
+        target instanceof Text
+          ? target.parentElement
+          : target instanceof Element
+            ? target
+            : hit
+      const caret = rangeFromPoint(doc, clientX, clientY)
+      const caretEl =
+        caret?.startContainer instanceof Element
+          ? caret.startContainer
+          : caret?.startContainer.parentElement ?? null
+      const block =
+        nearestBookmarkBlock(fromNode instanceof Element ? fromNode : hit instanceof Element ? hit : null) ||
+        nearestBookmarkBlock(caretEl)
       if (block instanceof HTMLElement) {
         const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
         const view = viewRef.current

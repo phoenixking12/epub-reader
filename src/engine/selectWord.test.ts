@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHugeNativeSelection, wordBounds, wordRangeFromCaret, wordRangeFromHit } from './selectWord'
+import { isHugeNativeSelection, wordBounds, wordRangeFromCaret, wordRangeFromHit, nearestBookmarkBlock } from './selectWord'
 
 describe('wordBounds', () => {
   it('selects the word under the caret', () => {
@@ -46,6 +46,22 @@ describe('wordRangeFromCaret', () => {
     caret.setStart(doc.body, 0)
     caret.collapse(true)
     expect(wordRangeFromHit(caret, p)?.toString()).toBe('Hello')
+  })
+})
+
+describe('nearestBookmarkBlock', () => {
+  it('finds a paragraph from a nested span', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p><span>The river widened</span></p>'
+    const span = doc.querySelector('span')!
+    expect(nearestBookmarkBlock(span)?.tagName).toBe('P')
+  })
+
+  it('finds a div that holds the paragraph text when there is no p', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<div class="text">The river widened and the road followed it.</div>'
+    const div = doc.querySelector('div')!
+    expect(nearestBookmarkBlock(div)?.textContent).toMatch(/river widened/)
   })
 })
 
