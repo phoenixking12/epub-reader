@@ -754,7 +754,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
-          handleContentTap(doc, t.clientX, t.clientY)
+          handleContentTap(doc, t.clientX, t.clientY, e.target)
         }
       }
       state.selecting = false
@@ -763,9 +763,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
-    doc.addEventListener('mouseup', () => {
+    doc.addEventListener('mouseup', (e) => {
+      if (state.selecting || state.handle) {
+        emitDocSelection(doc, undefined, true)
+        return
+      }
       const sel = doc.getSelection()
-      if (sel && !sel.isCollapsed) emitDocSelection(doc, undefined, true)
+      const moved = Math.hypot(e.clientX - state.x, e.clientY - state.y)
+      if (sel && !sel.isCollapsed && moved > 8) emitDocSelection(doc, undefined, true)
     })
     doc.addEventListener('click', (ev) => {
       if (state.fromTouch) {
@@ -774,10 +779,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       if (ev.defaultPrevented) return
       const sel = doc.getSelection()
-      if (sel && !sel.isCollapsed) {
+      const moved = Math.hypot(ev.clientX - state.x, ev.clientY - state.y)
+      if (sel && !sel.isCollapsed && (moved > 8 || state.selecting)) {
         emitDocSelection(doc, undefined, true)
         return
       }
+      if (sel && !sel.isCollapsed) sel.removeAllRanges()
       handleContentTap(doc, ev.clientX, ev.clientY, ev.target)
     })
     if (window.matchMedia?.('(pointer: fine)').matches) {
