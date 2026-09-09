@@ -66,12 +66,13 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
             />
           </label>
+          <p className="muted">As printed keeps the book’s typeface and alignment. Change them here when you want.</p>
           <div className="action-row">
             <button
               className={settings.justify ? 'chip active' : 'chip'}
               onClick={() => onChange({ justify: !settings.justify })}
             >
-              Justify
+              {settings.justify ? 'Justified' : 'As printed'}
             </button>
             <button
               className={settings.hyphenate ? 'chip active' : 'chip'}

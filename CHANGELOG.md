@@ -2,6 +2,27 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.0 — 2026-09-09
+
+### Added
+
+- Paragraph bookmark ribbon on a single tap, like Reasily; tap the ribbon to name it
+- **As printed** typeface and alignment follow the EPUB; change them in Text when you want
+
+### Changed
+
+- Headings keep the book’s size, weight, and alignment instead of matching body copy
+- Font color, bold, and italic wrap the words so they show on Android WebView
+- Scroll mode expands the whole chapter and pans vertically instead of stopping at the first screen
+- Reading bar sits below the status / notification bar
+- Selection tools no longer include Bookmark; tap the paragraph ribbon instead
+
+### Fixed
+
+- Long-press selection highlight and handles remaining visible
+- Font color in the selection toolbar applying the chosen style
+- Chapter scroll only showing the first page
+
 ## 3.0.2 — 2026-09-09
 
 ### Added

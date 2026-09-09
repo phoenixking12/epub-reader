@@ -49,6 +49,7 @@ export interface DisplaySettings {
   defaultAnnotationStyle: AnnotationStyle
   defaultAnnotationColor: string
   invertImagesInNight: boolean
+  textSchema?: number
 }
 
 export interface BookRecord {

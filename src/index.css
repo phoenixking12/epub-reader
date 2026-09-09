@@ -1,5 +1,9 @@
 :root {
   color-scheme: dark;
+  --lg-sat: env(safe-area-inset-top, 0px);
+  --lg-sab: env(safe-area-inset-bottom, 0px);
+  --lg-sal: env(safe-area-inset-left, 0px);
+  --lg-sar: env(safe-area-inset-right, 0px);
   --ink: #1c1917;
   --paper: #f4efe6;
   --accent: #c2410c;
@@ -40,7 +44,10 @@ img { max-width: 100%; }
 .library, .settings {
   min-height: 100%;
   padding: 20px 20px 120px;
-  padding-bottom: max(120px, env(safe-area-inset-bottom, 0px) + 96px);
+  padding-top: calc(var(--lg-sat, 0px) + 20px);
+  padding-left: max(20px, var(--lg-sal, 0px));
+  padding-right: max(20px, var(--lg-sar, 0px));
+  padding-bottom: max(120px, var(--lg-sab, 0px) + 96px);
   max-width: 960px;
   margin: 0 auto;
 }
@@ -294,6 +301,7 @@ select option { background: #1c1917; color: #fafaf9; }
 .foliate-host {
   position: absolute;
   inset: 0;
+  top: var(--lg-sat, 0px);
   touch-action: pan-x pan-y;
 }
 .reader.chrome-on .foliate-host {
@@ -326,10 +334,10 @@ select option { background: #1c1917; color: #fafaf9; }
   top: 0;
   flex-wrap: nowrap;
   min-height: 56px;
-  padding-top: 10px;
+  padding-top: calc(var(--lg-sat, 0px) + 10px);
   padding-bottom: 10px;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: max(16px, var(--lg-sal, 0px));
+  padding-right: max(16px, var(--lg-sar, 0px));
   overflow: visible;
 }
 .chrome-btn {
@@ -388,6 +396,8 @@ select option { background: #1c1917; color: #fafaf9; }
   background: #1c1917;
   overflow: auto;
   padding: 14px 14px 36px;
+  padding-top: calc(var(--lg-sat, 0px) + 14px);
+  padding-bottom: calc(var(--lg-sab, 0px) + 36px);
   border-right: 1px solid var(--line);
 }
 .drawer-head {
@@ -585,6 +595,7 @@ select option { background: #1c1917; color: #fafaf9; }
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
   padding: 10px 14px 28px;
+  padding-bottom: calc(var(--lg-sab, 0px) + 28px);
   border: 1px solid var(--line);
   max-height: 70%;
   overflow: auto;
@@ -776,8 +787,8 @@ select option { background: #1c1917; color: #fafaf9; }
 
 .reader-progress {
   position: absolute;
-  right: 10px;
-  bottom: 12px;
+  right: max(10px, var(--lg-sar, 0px));
+  bottom: calc(var(--lg-sab, 0px) + 12px);
   z-index: 3;
   pointer-events: none;
   display: grid;
@@ -797,7 +808,7 @@ select option { background: #1c1917; color: #fafaf9; }
 .pinch-badge {
   position: absolute;
   left: 50%;
-  top: 18%;
+  top: calc(var(--lg-sat, 0px) + 18%);
   transform: translateX(-50%);
   z-index: 5;
   background: #1c1917;
