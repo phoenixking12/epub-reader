@@ -2,6 +2,18 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.5 — 2026-09-10
+
+### Fixed
+
+- Double-tap on text or a cover opens the reading bar, not only empty margins
+- The bar sits just under the Android status bar (no extra black band)
+- Selection tooltip is smaller; custom start/end blips hide the system handles
+- Font color paints the words via a span (Android WebView ignores `::highlight` color)
+- A single tap on a paragraph shows a 7px bookmark dot; tap the dot to name it
+- Scroll uses the native pan again instead of a JS-driven drag
+- Typeface defaults to the book's own font (Text → Book default)
+
 ## 3.1.4 — 2026-09-09
 
 ### Fixed

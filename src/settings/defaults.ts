@@ -14,7 +14,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   customBg: '#f4efe6',
   customFg: '#1c1917',
   customLink: '#9a3412',
-  fontFamily: '"Source Serif 4", Georgia, serif',
+  fontFamily: 'publisher',
   fontSize: 18,
   lineHeight: 1.55,
   margin: 8,
@@ -45,6 +45,7 @@ export const THEMES: Record<
 }
 
 export const BUNDLED_FONTS = [
+  { id: 'publisher', label: 'Book default', value: 'publisher' },
   { id: 'source-serif', label: 'Source Serif', value: '"Source Serif 4", Georgia, serif' },
   { id: 'literata', label: 'Literata', value: 'Literata, Georgia, serif' },
   { id: 'newsreader', label: 'Newsreader', value: 'Newsreader, Georgia, serif' },
@@ -80,6 +81,10 @@ export function newId(): string {
   return crypto.randomUUID()
 }
 
+export function usesPublisherFont(family?: string | null): boolean {
+  return !family || family === 'publisher'
+}
+
 export function flowForPageTurn(mode: PageTurnMode): DisplaySettings['flow'] {
   return mode === 'scroll' ? 'scrolled' : 'paginated'
 }
@@ -89,9 +94,16 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   const pageTurnMode: PageTurnMode =
     display?.pageTurnMode ?? (display?.flow === 'scrolled' ? 'scroll' : DEFAULT_DISPLAY.pageTurnMode)
   const margin = display?.margin === 24 || display?.margin == null ? 8 : merged.margin
+  const savedFamily = display?.fontFamily
+  const keepCustomFont =
+    Boolean(savedFamily) &&
+    savedFamily !== 'publisher' &&
+    savedFamily !== '"Source Serif 4", Georgia, serif'
+  const fontFamily = keepCustomFont && savedFamily ? savedFamily : 'publisher'
   return {
     ...merged,
     margin,
+    fontFamily,
     pageTurnMode,
     flow: flowForPageTurn(pageTurnMode),
     customHighlightColors: merged.customHighlightColors ?? [],

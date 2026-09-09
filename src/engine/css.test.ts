@@ -14,9 +14,14 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/h1:first-child[\s\S]*margin-top: 0/)
   })
 
-  it('keeps paragraph bookmark marks small and untappable', () => {
-    expect(css).toMatch(/html\.lg-show-marks p::before[\s\S]*width: 8px/)
-    expect(css).toMatch(/pointer-events: none/)
+  it('keeps paragraph bookmark marks small', () => {
+    expect(css).toMatch(/\.lg-pmark::after[\s\S]*width: 7px/)
+    expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 22px/)
+  })
+
+  it('does not override the book typeface when Book default is selected', () => {
+    expect(css).not.toMatch(/font-family: publisher/)
+    expect(css).not.toMatch(/font-family: "Source Serif 4"/)
   })
 
   it('allows text selection so long-press can highlight a word', () => {

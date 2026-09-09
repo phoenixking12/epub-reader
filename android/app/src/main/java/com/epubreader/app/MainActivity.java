@@ -6,7 +6,6 @@ import android.view.ActionMode;
 import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.webkit.WebView;
 
 import androidx.core.graphics.Insets;
@@ -38,34 +37,22 @@ public class MainActivity extends BridgeActivity {
     private void applySystemBarInsets() {
         if (getBridge() == null || getBridge().getWebView() == null) return;
         View webView = getBridge().getWebView();
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), webView);
         bars.setAppearanceLightStatusBars(false);
         bars.setAppearanceLightNavigationBars(false);
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
-            Insets status = insets.getInsets(WindowInsetsCompat.Type.statusBars());
             Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-            ViewGroup.LayoutParams raw = v.getLayoutParams();
-            if (raw instanceof ViewGroup.MarginLayoutParams) {
-                ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
-                lp.topMargin = 0;
-                lp.bottomMargin = 0;
-                lp.leftMargin = 0;
-                lp.rightMargin = 0;
-                v.setLayoutParams(lp);
-            }
-            v.setPadding(0, 0, 0, 0);
+            v.setPadding(0, 0, 0, nav.bottom);
             String js =
-                    "document.documentElement.style.setProperty('--lg-sat','"
-                            + status.top
-                            + "px');"
+                    "document.documentElement.style.setProperty('--lg-sat','0px');"
                             + "document.documentElement.style.setProperty('--lg-sab','"
                             + nav.bottom
                             + "px');";
             if (v instanceof WebView) {
                 ((WebView) v).evaluateJavascript(js, null);
             }
-            return WindowInsetsCompat.CONSUMED;
+            return insets;
         });
         ViewCompat.requestApplyInsets(webView);
     }

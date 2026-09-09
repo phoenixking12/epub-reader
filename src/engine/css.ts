@@ -1,4 +1,4 @@
-import { THEMES } from '../settings/defaults'
+import { THEMES, usesPublisherFont } from '../settings/defaults'
 import type { DisplaySettings } from '../types/models'
 import { collectDocumentFontFaces } from './fontFaces'
 
@@ -16,6 +16,8 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
   const faces = collectDocumentFontFaces()
+  const publisher = usesPublisherFont(settings.fontFamily)
+  const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
 
   return `
     @namespace epub "http://www.idpf.org/2007/ops";
@@ -24,10 +26,10 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       background: ${bg} !important;
       color: ${fg} !important;
       font-size: ${settings.fontSize}px !important;
-      font-family: ${settings.fontFamily} !important;
+      ${fontFamilyCss}
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'manipulation'};
+      touch-action: pan-x pan-y;
       -webkit-user-select: text !important;
       user-select: text !important;
       -webkit-touch-callout: none !important;
@@ -38,11 +40,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     body {
       background: transparent !important;
       color: inherit !important;
-      font-family: ${settings.fontFamily} !important;
+      ${fontFamilyCss}
       font-size: 1em !important;
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'manipulation'};
+      touch-action: pan-x pan-y;
       -webkit-user-select: text !important;
       user-select: text !important;
       -webkit-touch-callout: none !important;
@@ -56,8 +58,12 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       -webkit-user-select: text !important;
       user-select: text !important;
     }
-    body, p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, div, section, article, aside, td, th, span, a {
+    ${
+      publisher
+        ? ''
+        : `body, p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, div, section, article, aside, td, th, span, a {
       font-family: ${settings.fontFamily} !important;
+    }`
     }
     p, h1, h2, h3, h4, h5, h6, li, blockquote {
       position: relative !important;
@@ -77,28 +83,40 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       background-color: color-mix(in srgb, #ea580c 38%, transparent);
       color: inherit;
     }
-    html.lg-show-marks p::before,
-    html.lg-show-marks h1::before,
-    html.lg-show-marks h2::before,
-    html.lg-show-marks h3::before,
-    html.lg-show-marks h4::before,
-    html.lg-show-marks h5::before,
-    html.lg-show-marks h6::before,
-    html.lg-show-marks li::before,
-    html.lg-show-marks blockquote::before {
-      content: "";
+    ::selection {
+      background: color-mix(in srgb, #ea580c 38%, transparent);
+      color: inherit;
+    }
+    html.lg-custom-sel ::selection {
+      background: transparent;
+      color: inherit;
+    }
+    .lg-pmark {
       position: absolute;
       left: 0;
-      top: 0.45em;
-      width: 8px;
-      height: 8px;
+      top: 0.15em;
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      z-index: 4;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lg-pmark::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 6px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: ${bg};
       box-shadow: inset 0 0 0 1.5px ${link};
-      pointer-events: none;
-      z-index: 4;
     }
-    html.lg-show-marks .lg-bookmarked::before {
+    .lg-pmark.on::after {
       background: ${link};
     }
     .lg-sel-handle {

@@ -42,7 +42,7 @@ img { max-width: 100%; }
 .library, .settings {
   min-height: 100%;
   padding: 20px 20px 120px;
-  padding-top: calc(12px + var(--lg-sat));
+  padding-top: 12px;
   padding-bottom: max(120px, calc(var(--lg-sab) + 96px));
   max-width: 960px;
   margin: 0 auto;
@@ -282,6 +282,10 @@ select option { background: #1c1917; color: #fafaf9; }
   border: 2px solid transparent;
 }
 .swatch.active { border-color: white; }
+.selection-pop .swatch {
+  width: 22px;
+  height: 22px;
+}
 .swatch.inline { width: 10px; height: 10px; display: inline-block; margin-right: 6px; }
 
 .reader {
@@ -292,17 +296,17 @@ select option { background: #1c1917; color: #fafaf9; }
   --chrome-h: 0px;
 }
 .reader.chrome-on {
-  --chrome-h: 48px;
+  --chrome-h: 44px;
 }
 .foliate-host {
   position: absolute;
   inset: 0;
-  top: var(--lg-sat);
+  top: 0;
   bottom: var(--lg-sab);
   touch-action: pan-x pan-y;
 }
 .reader.chrome-on .foliate-host {
-  top: var(--chrome-h, 48px);
+  top: var(--chrome-h, 44px);
 }
 .foliate-host foliate-view {
   display: block;
@@ -330,13 +334,10 @@ select option { background: #1c1917; color: #fafaf9; }
 .reader-top {
   top: 0;
   flex-wrap: nowrap;
-  min-height: calc(40px + var(--lg-sat) + 4px);
-  padding-top: var(--lg-sat);
-  padding-bottom: 4px;
-  padding-left: 8px;
-  padding-right: 8px;
+  min-height: 44px;
+  padding: 2px 6px;
   overflow: visible;
-  align-items: flex-end;
+  align-items: center;
 }
 .chrome-btn {
   flex: none;
@@ -545,7 +546,7 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .reader-menu {
   position: absolute;
-  top: calc(max(48px, var(--chrome-h, 48px)) + 4px);
+  top: calc(var(--chrome-h, 44px) + 4px);
   right: 10px;
   z-index: 6;
   display: grid;
@@ -608,34 +609,34 @@ select option { background: #1c1917; color: #fafaf9; }
 .selection-pop {
   position: absolute;
   z-index: 8;
-  width: min(340px, calc(100vw - 16px));
-  max-height: min(52vh, 420px);
+  width: min(268px, calc(100vw - 28px));
+  max-height: min(38vh, 260px);
   overflow: auto;
   background: #292524;
   color: #fafaf9;
   border: 1px solid #57534e;
-  border-radius: 14px;
-  padding: 8px 8px max(10px, var(--lg-sab));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+  padding: 5px 6px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 .sel-styles {
   display: flex;
   flex-wrap: nowrap;
   justify-content: space-between;
-  gap: 4px;
-  margin-bottom: 8px;
+  gap: 2px;
+  margin-bottom: 4px;
   overflow-x: auto;
 }
 .sel-icon {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #57534e;
   background: #1c1917;
   color: #fafaf9;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   font-family: Georgia, serif;
 }

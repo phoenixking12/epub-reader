@@ -215,7 +215,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         settings={settingsRow.display}
         annotations={annotations}
         bookmarks={bookmarks}
-        showParagraphMarks={showChrome || marksOn}
+        showParagraphMarks={marksOn}
         onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
           locationRef.current = { cfi, quote: locLabel }
           setFrac((v) => (v === fraction ? v : fraction))
@@ -266,11 +266,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onTapCenter={() => {
           setMenuOpen(false)
-          setChrome((v) => {
-            const next = !v
-            setMarksOn(next)
-            return next
-          })
+          setChrome((v) => !v)
         }}
         onShowMarks={setMarksOn}
         onIdleTap={() => {

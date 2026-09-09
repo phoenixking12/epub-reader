@@ -25,4 +25,10 @@ describe('migrateDisplay', () => {
   it('keeps a custom side margin', () => {
     expect(migrateDisplay({ ...DEFAULT_DISPLAY, margin: 36 }).margin).toBe(36)
   })
+
+  it('uses the book typeface by default and keeps a chosen face', () => {
+    expect(migrateDisplay({}).fontFamily).toBe('publisher')
+    expect(migrateDisplay({ fontFamily: '"Source Serif 4", Georgia, serif' }).fontFamily).toBe('publisher')
+    expect(migrateDisplay({ fontFamily: 'Literata, Georgia, serif' }).fontFamily).toBe('Literata, Georgia, serif')
+  })
 })

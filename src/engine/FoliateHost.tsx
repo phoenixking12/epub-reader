@@ -10,6 +10,7 @@ import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 import { caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
+import { usesPublisherFont } from '../settings/defaults'
 
 export interface SelectionInfo {
   cfi: string
@@ -99,31 +100,38 @@ function drawAnnotation(
   return [Overlayer.highlight, { color }]
 }
 
+function unwrapAnnSpans(doc: Document, id: string) {
+  doc.querySelectorAll(`[data-lg-ann="${id}"]`).forEach((el) => {
+    const parent = el.parentNode
+    if (!parent) return
+    while (el.firstChild) parent.insertBefore(el.firstChild, el)
+    parent.removeChild(el)
+    if ('normalize' in parent) parent.normalize()
+  })
+}
+
 function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
   if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') return
-  if (typeof Highlight !== 'function' || !CSS.highlights) return
-  const name = `ann-${rec.id}`
-  CSS.highlights.set(name, new Highlight(range))
-  const parent = doc.head ?? doc.documentElement
-  if (!parent) return
-  let styleEl = doc.getElementById('reader-highlight-styles') as HTMLStyleElement | null
-  if (!styleEl) {
-    styleEl = doc.createElement('style')
-    styleEl.id = 'reader-highlight-styles'
-    parent.append(styleEl)
+  unwrapAnnSpans(doc, rec.id)
+  const span = doc.createElement('span')
+  span.dataset.lgAnn = rec.id
+  if (rec.style === 'textColor') span.style.setProperty('color', rec.color, 'important')
+  if (rec.style === 'bold') span.style.setProperty('font-weight', '700', 'important')
+  if (rec.style === 'italic') span.style.setProperty('font-style', 'italic', 'important')
+  try {
+    range.surroundContents(span)
+  } catch {
+    span.append(range.extractContents())
+    range.insertNode(span)
   }
-  const extra =
-    rec.style === 'textColor'
-      ? `color: ${rec.color};`
-      : rec.style === 'bold'
-        ? `font-weight: 700; text-shadow: 0.3px 0 0 currentColor;`
-        : rec.style === 'italic'
-          ? `font-style: italic;`
-          : ''
-  const start = `::highlight(${name})`
-  const lines = (styleEl.textContent || '').split('\n').filter((line) => !line.includes(start))
-  if (extra) lines.push(`${start} { ${extra} }`)
-  styleEl.textContent = `${lines.filter(Boolean).join('\n')}\n`
+  const Win = doc.defaultView
+  if (!Win?.Highlight || !Win.CSS?.highlights) return
+  const name = `ann-${rec.id}`
+  try {
+    Win.CSS.highlights.set(name, new Win.Highlight(range))
+  } catch {
+    /* ignore */
+  }
 }
 
 export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost(
@@ -171,6 +179,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const savedRanges = useRef(new WeakMap<Document, Range>())
   const hidingNative = useRef(new WeakSet<Document>())
   const tapRef = useRef({ t: 0, x: 0, y: 0, timer: 0 })
+  const markFocusRef = useRef('')
 
   settingsRef.current = settings
   annotationsRef.current = annotations
@@ -384,6 +393,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (!sel) return
     hidingNative.current.add(doc)
     sel.removeAllRanges()
+    doc.documentElement.classList.add('lg-custom-sel')
     window.setTimeout(() => hidingNative.current.delete(doc), 0)
   }
 
@@ -406,6 +416,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
     savedRanges.current.delete(doc)
     clearSelHighlight(doc)
+    doc.documentElement.classList.remove('lg-custom-sel')
   }
 
   const paintParagraphMarks = () => {
@@ -415,7 +426,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!doc) continue
       doc.documentElement.classList.toggle('lg-show-marks', showMarksRef.current)
       doc.querySelectorAll('.lg-pmark').forEach((n) => n.remove())
-      doc.querySelectorAll('.lg-bookmarked').forEach((n) => n.classList.remove('lg-bookmarked'))
       if (!showMarksRef.current) continue
       const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, blockquote')
       for (const block of nodes) {
@@ -432,7 +442,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const on = bookmarksRef.current.some(
           (b) => b.cfi === cfi || (b.kind === 'paragraph' && b.quote === quote),
         )
-        if (on) block.classList.add('lg-bookmarked')
+        if (!on && cfi !== markFocusRef.current) continue
+        const btn = doc.createElement('button')
+        btn.type = 'button'
+        btn.className = `lg-pmark${on ? ' on' : ''}`
+        btn.setAttribute('aria-label', on ? 'Edit bookmark' : 'Bookmark paragraph')
+        btn.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const r = btn.getBoundingClientRect()
+          const vp = toViewport(doc, r.left, r.top)
+          onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
+        })
+        block.prepend(btn)
       }
     }
   }
@@ -441,7 +463,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const hit =
       (target instanceof Element ? target : null) ||
       doc.elementFromPoint(clientX, clientY)
-    if (hit?.closest('a, img, video, audio, button, .lg-sel-handle')) {
+    if (hit?.closest('a, button, .lg-sel-handle, .lg-pmark')) {
       return
     }
     if (savedRanges.current.has(doc) || doc.querySelector('.lg-sel-handle')) {
@@ -454,7 +476,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const existing = hitAnnotation(doc, clientX, clientY)
     const now = Date.now()
     const prev = tapRef.current
-    const isDouble = now - prev.t < 280 && Math.hypot(clientX - prev.x, clientY - prev.y) < 28
+    const isDouble = now - prev.t < 340 && Math.hypot(clientX - prev.x, clientY - prev.y) < 48
     window.clearTimeout(prev.timer)
 
     if (isDouble) {
@@ -483,6 +505,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     prev.timer = window.setTimeout(() => {
       prev.t = 0
+      const img = hit?.closest?.('img')
+      if (img instanceof HTMLImageElement) {
+        onImageRef.current({ src: img.src, alt: img.alt || img.title || '' })
+        return
+      }
       const fromNode =
         target instanceof Text
           ? target.parentElement
@@ -498,37 +525,32 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         nearestBookmarkBlock(fromNode instanceof Element ? fromNode : hit instanceof Element ? hit : null) ||
         nearestBookmarkBlock(caretEl)
       if (block instanceof HTMLElement) {
-        const quote = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
-        const view = viewRef.current
-        const index = view?.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
         const range = doc.createRange()
         try {
           range.selectNodeContents(block)
         } catch {
           return
         }
-        const cfi = cfiFor(index, range) || cfiFor(index)
-        const vp = toViewport(doc, clientX, clientY)
+        const index = viewRef.current?.renderer.getContents().find((c) => c.doc === doc)?.index ?? 0
+        markFocusRef.current = cfiFor(index, range)
         showMarksRef.current = true
-        paintParagraphMarks()
         onShowMarksRef.current?.(true)
-        if (quote.length >= 2) {
-          onParagraphTapRef.current({ cfi, quote, x: vp.x, y: vp.y })
-        }
+        window.setTimeout(() => paintParagraphMarks(), 0)
         return
       }
       showMarksRef.current = false
+      markFocusRef.current = ''
       paintParagraphMarks()
       onShowMarksRef.current?.(false)
       onIdleTapRef.current?.()
-    }, 320)
+    }, 360)
   }
 
   const suppressNativeUi = (doc: Document) => {
     doc.addEventListener('contextmenu', (e) => e.preventDefault())
   }
 
-  const emitDocSelection = (doc: Document, overlayCfi?: string, keepNative = true) => {
+  const emitDocSelection = (doc: Document, overlayCfi?: string) => {
     let sel = doc.getSelection()
     if (!sel?.rangeCount || sel.isCollapsed) {
       const saved = savedRanges.current.get(doc)
@@ -555,7 +577,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const range = sel.getRangeAt(0)
     const box = rangeBox(range)
     savedRanges.current.set(doc, range.cloneRange())
-    const painted = paintSelHighlight(doc, range)
+    paintSelHighlight(doc, range)
     const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
       let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
       if (!el) {
@@ -570,7 +592,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     placeHandle('start', box.start.left, box.start.top - 14)
     placeHandle('end', box.end.right, box.end.bottom - 30)
     onSelectionRef.current(info)
-    if (!keepNative && painted) hideNativeSelection(doc)
+    hideNativeSelection(doc)
   }
 
   const bindTextSelection = (doc: Document) => {
@@ -585,30 +607,17 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       lastY: 0,
       t: 0,
       selecting: false,
-      panning: false,
       fromTouch: false,
       handle: null as 'start' | 'end' | null,
       anchorNode: null as Node | null,
       anchorOffset: 0,
-      panDy: 0,
-      panRaf: 0,
       emitRaf: 0,
-    }
-    const flushPan = () => {
-      state.panRaf = 0
-      const dy = state.panDy
-      state.panDy = 0
-      if (dy) viewRef.current?.renderer?.pan?.(0, dy)
-    }
-    const queuePan = (dy: number) => {
-      state.panDy += dy
-      if (!state.panRaf) state.panRaf = requestAnimationFrame(flushPan)
     }
     const emitSoon = () => {
       if (state.emitRaf) return
       state.emitRaf = requestAnimationFrame(() => {
         state.emitRaf = 0
-        emitDocSelection(doc, undefined, true)
+        emitDocSelection(doc)
       })
     }
     const abortSelectToPan = () => {
@@ -619,7 +628,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       clearHandles(doc)
       doc.getSelection()?.removeAllRanges()
       onSelectionRef.current(null)
-      state.panning = true
     }
     doc.addEventListener(
       'touchstart',
@@ -638,8 +646,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.lastY = t.clientY
         state.t = Date.now()
         state.fromTouch = true
-        state.panning = false
-        state.panDy = 0
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
         if (handleEl) {
@@ -666,10 +672,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.selecting = false
         state.handle = null
         state.timer = window.setTimeout(() => {
-          if (state.panning) return
           if (selectWordAt(doc, state.x, state.y)) {
             state.selecting = true
-            emitDocSelection(doc, undefined, true)
+            emitDocSelection(doc)
             navigator.vibrate?.(12)
           }
         }, 350)
@@ -684,8 +689,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const moved = Math.hypot(t.clientX - state.x, t.clientY - state.y)
         const totalX = t.clientX - state.x
         const totalY = t.clientY - state.y
-        const dy = t.clientY - state.lastY
-        const scrollMode = settingsRef.current.pageTurnMode === 'scroll'
         if (state.handle && state.anchorNode) {
           e.preventDefault()
           e.stopPropagation()
@@ -702,20 +705,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (moved > 8) window.clearTimeout(state.timer)
-        if (state.selecting && scrollMode && Math.abs(totalY) > 22 && Math.abs(totalY) > Math.abs(totalX) * 1.15) {
+        if (state.selecting && Math.abs(totalY) > 28 && Math.abs(totalY) > Math.abs(totalX) * 1.2) {
           abortSelectToPan()
-        }
-        if (!state.selecting) {
-          if (scrollMode && (state.panning || (Math.abs(totalY) > 8 && Math.abs(totalY) > Math.abs(totalX) * 0.85))) {
-            state.panning = true
-            e.preventDefault()
-            e.stopPropagation()
-            queuePan(-dy)
-            state.lastX = t.clientX
-            state.lastY = t.clientY
-          }
           return
         }
+        if (!state.selecting) return
         e.preventDefault()
         e.stopPropagation()
         extendSelectionTo(doc, t.clientX, t.clientY)
@@ -727,30 +721,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     )
     const endSelect = (e: TouchEvent) => {
       window.clearTimeout(state.timer)
-      if (state.panRaf) {
-        cancelAnimationFrame(state.panRaf)
-        flushPan()
-      }
       if (state.emitRaf) {
         cancelAnimationFrame(state.emitRaf)
         state.emitRaf = 0
       }
       if (state.selecting || state.handle) {
-        emitDocSelection(doc, undefined, true)
-        state.selecting = false
-        state.handle = null
-        state.panning = false
-        return
-      }
-      if (state.panning) {
-        state.panning = false
+        emitDocSelection(doc)
         state.selecting = false
         state.handle = null
         return
       }
       if (
         e.changedTouches.length === 1 &&
-        Date.now() - state.t < 400 &&
+        Date.now() - state.t < 500 &&
         Date.now() - pinchRef.current.lastAt > 350
       ) {
         const t = e.changedTouches[0]
@@ -773,18 +756,17 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       state.selecting = false
       state.handle = null
-      state.panning = false
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
     doc.addEventListener('mouseup', (e) => {
       if (state.selecting || state.handle) {
-        emitDocSelection(doc, undefined, true)
+        emitDocSelection(doc)
         return
       }
       const sel = doc.getSelection()
       const moved = Math.hypot(e.clientX - state.x, e.clientY - state.y)
-      if (sel && !sel.isCollapsed && moved > 8) emitDocSelection(doc, undefined, true)
+      if (sel && !sel.isCollapsed && moved > 8) emitDocSelection(doc)
     })
     doc.addEventListener('click', (ev) => {
       if (state.fromTouch) {
@@ -795,7 +777,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const sel = doc.getSelection()
       const moved = Math.hypot(ev.clientX - state.x, ev.clientY - state.y)
       if (sel && !sel.isCollapsed && (moved > 8 || state.selecting)) {
-        emitDocSelection(doc, undefined, true)
+        emitDocSelection(doc)
         return
       }
       if (sel && !sel.isCollapsed) sel.removeAllRanges()
@@ -810,7 +792,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.timer = window.setTimeout(() => {
           if (selectWordAt(doc, state.x, state.y)) {
             state.selecting = true
-            emitDocSelection(doc, undefined, true)
+            emitDocSelection(doc)
           }
         }, 350)
       })
@@ -1011,14 +993,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         }
         emitDocSelection(doc)
       })
-      doc.addEventListener('click', (ev) => {
-        const img = (ev.target as HTMLElement | null)?.closest?.('img')
-        if (img instanceof HTMLImageElement) {
-          ev.preventDefault()
-          ev.stopPropagation()
-          onImageRef.current({ src: img.src, alt: img.alt || img.title || '' })
-        }
-      })
       const colors = themeColors(settingsRef.current)
       doc.documentElement.style.background = colors.bg
       bindPinchToDocument(doc)
@@ -1197,8 +1171,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
       part.doc?.documentElement.style.setProperty('font-size', `${settingsRef.current.fontSize}px`, 'important')
-      part.doc?.documentElement.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
-      part.doc?.body?.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
+      if (usesPublisherFont(settingsRef.current.fontFamily)) {
+        part.doc?.documentElement.style.removeProperty('font-family')
+        part.doc?.body?.style.removeProperty('font-family')
+      } else {
+        part.doc?.documentElement.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
+        part.doc?.body?.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
+      }
     }
   }, [settingsKey])
 
@@ -1210,9 +1189,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     for (const rec of prev) {
       if (nextKeys.has(rec.cfiRange)) continue
       void Promise.resolve(view.deleteAnnotation({ value: rec.cfiRange })).catch(() => undefined)
-      if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete(`ann-${rec.id}`)
       if (view.renderer) {
         for (const { doc } of view.renderer.getContents()) {
+          if (doc) unwrapAnnSpans(doc, rec.id)
           const highlights = doc?.defaultView?.CSS?.highlights
           highlights?.delete(`ann-${rec.id}`)
         }
