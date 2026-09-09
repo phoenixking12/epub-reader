@@ -2,6 +2,16 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.0.3 — 2026-09-09
+
+### Fixed
+
+- Top inset is only the status bar, so reading text sits just under the notification icons
+- Long-press selects a word instead of the whole paragraph or page
+- Vertical pans in Scroll mode move through the chapter; sideways swipe still changes chapter
+- Paragraph bookmark dots and the name sheet take less space
+- Chapter subheadings (`h2`/`h3` and common subtitle classes) render larger and bold
+
 ## 3.0.2 — 2026-09-09
 
 ### Added

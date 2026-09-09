@@ -11,7 +11,21 @@ export function buildMinimalEpub(opts?: {
     opts?.chapter ??
     `<p>This is a sample EPUB so you can try the reader without finding a file first.</p>
      <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
-     <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>`
+     <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>
+     <p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
+     <p>Bookmark dots sit at the start of a paragraph. They are small on purpose so they do not cover the text.</p>
+     <p>Chapter two has a scene heading and a smaller subheading so you can check type size and weight.</p>
+     <p>Keep sliding. Scroll mode should keep the same chapter on screen until you swipe sideways for the next one.</p>
+     <p>A long chapter is the usual case. This sample is padded so you can feel the pan without opening another book.</p>
+     <p>The first lines should sit close to the top of the screen, just under the notification icons, with only a slim margin.</p>
+     <p>If you double-tap, a compact bar appears with Library and the overflow menu. Double-tap again and it goes away.</p>
+     <p>Type size still pinches. Highlights still use the orange handles. None of that should steal the vertical pan.</p>
+     <p>Paragraph two of the padding: the river widened and the road followed it through a stand of pines.</p>
+     <p>Paragraph three of the padding: someone had stacked firewood under the eaves, dry enough to catch at a glance.</p>
+     <p>Paragraph four of the padding: a kettle ticked on the stove while the window fogged at the corners.</p>
+     <p>Paragraph five of the padding: the map on the table still showed yesterday's pencil marks.</p>
+     <p>Paragraph six of the padding: you should still be able to scroll to read this line.</p>
+     <p>Paragraph seven of the padding: last extra block before the chapter ends.</p>`
 
   const files: Record<string, Uint8Array> = {
     mimetype: strToU8('application/epub+zip'),
@@ -65,7 +79,9 @@ export function buildMinimalEpub(opts?: {
   <head><title>Chapter two</title></head>
   <body>
     <h1>Chapter two</h1>
+    <h2>A scene heading</h2>
     <p>Swipe or tap the right edge to get here. Progress is saved as an EPUB CFI, so it survives font and screen changes.</p>
+    <h3>A smaller subheading</h3>
     <p>Open Display to try sepia, night, custom colors, brightness, margins, and line length.</p>
   </body>
 </html>`),

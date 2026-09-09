@@ -27,8 +27,9 @@ public class MainActivity extends BridgeActivity {
         if (getBridge() == null || getBridge().getWebView() == null) return;
         View webView = getBridge().getWebView();
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(0, bars.top, 0, bars.bottom);
+            Insets status = insets.getInsets(WindowInsetsCompat.Type.statusBars());
+            Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            v.setPadding(0, status.top, 0, nav.bottom);
             return insets;
         });
         ViewCompat.requestApplyInsets(webView);

@@ -9,6 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
+import { caretIsTextual, isHugeNativeSelection, wordRangeFromCaret } from './selectWord'
 
 export interface SelectionInfo {
   cfi: string
@@ -258,26 +259,26 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const point = rangeFromPoint(doc, x, y)
     const sel = doc.getSelection()
     if (!point || !sel) return
+    const range = wordRangeFromCaret(point)
+    if (!range) return
     sel.removeAllRanges()
-    sel.addRange(point)
-    const win = doc.defaultView
-    try {
-      win?.getSelection()?.modify('move', 'backward', 'word')
-      win?.getSelection()?.modify('extend', 'forward', 'word')
-    } catch {
-      /* modify() missing */
-    }
+    sel.addRange(range)
   }
 
   const extendSelectionTo = (doc: Document, x: number, y: number) => {
     const point = rangeFromPoint(doc, x, y)
     const sel = doc.getSelection()
     if (!point || !sel?.rangeCount) return
+    if (!caretIsTextual(point.startContainer)) return
     try {
       sel.extend(point.startContainer, point.startOffset)
     } catch {
       const range = sel.getRangeAt(0)
-      range.setEnd(point.startContainer, point.startOffset)
+      try {
+        range.setEnd(point.startContainer, point.startOffset)
+      } catch {
+        /* cross-boundary */
+      }
     }
   }
 
@@ -544,8 +545,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       timer: number
       x: number
       y: number
+      lastX: number
+      lastY: number
       t: number
       selecting: boolean
+      panning: boolean
       fromTouch: boolean
       handle: 'start' | 'end' | null
       anchorNode: Node | null
@@ -554,8 +558,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       timer: 0,
       x: 0,
       y: 0,
+      lastX: 0,
+      lastY: 0,
       t: 0,
       selecting: false,
+      panning: false,
       fromTouch: false,
       handle: null,
       anchorNode: null,
@@ -574,8 +581,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const target = e.target as HTMLElement | null
         state.x = t.clientX
         state.y = t.clientY
+        state.lastX = t.clientX
+        state.lastY = t.clientY
         state.t = Date.now()
         state.fromTouch = true
+        state.panning = false
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
         if (handleEl) {
@@ -622,6 +632,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           const point = rangeFromPoint(doc, t.clientX, t.clientY)
           const sel = restoreSavedRange(doc) ?? doc.getSelection()
           if (!point || !sel) return
+          if (!caretIsTextual(point.startContainer)) return
           try {
             sel.setBaseAndExtent(state.anchorNode, state.anchorOffset, point.startContainer, point.startOffset)
           } catch {
@@ -632,6 +643,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         }
         if (!state.selecting) {
           if (moved > 12) window.clearTimeout(state.timer)
+          const mode = settingsRef.current.pageTurnMode
+          if (mode === 'scroll' && !state.handle) {
+            const dy = t.clientY - state.lastY
+            const totalX = t.clientX - state.x
+            const totalY = t.clientY - state.y
+            if (state.panning || (Math.abs(totalY) > 8 && Math.abs(totalY) > Math.abs(totalX) * 0.85)) {
+              state.panning = true
+              e.preventDefault()
+              e.stopPropagation()
+              viewRef.current?.renderer?.pan?.(0, -dy)
+              state.lastX = t.clientX
+              state.lastY = t.clientY
+            }
+          }
           return
         }
         e.preventDefault()
@@ -646,6 +671,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (state.selecting || state.handle) {
         e.stopPropagation()
         emitDocSelection(doc)
+        state.selecting = false
+        state.handle = null
+        state.panning = false
+        return
+      }
+      if (state.panning) {
+        state.panning = false
         state.selecting = false
         state.handle = null
         return
@@ -676,6 +708,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       state.selecting = false
       state.handle = null
+      state.panning = false
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
@@ -724,13 +757,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener(
       'wheel',
       (e) => {
-        if (!e.ctrlKey && !e.metaKey) return
-        e.preventDefault()
-        const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
-        settingsRef.current = { ...settingsRef.current, fontSize: next }
-        applyLiveFont(next)
-        onFontSizeRef.current(next)
-        window.setTimeout(() => showPinchBadge(next, false), 700)
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
+          settingsRef.current = { ...settingsRef.current, fontSize: next }
+          applyLiveFont(next)
+          onFontSizeRef.current(next)
+          window.setTimeout(() => showPinchBadge(next, false), 700)
+          return
+        }
+        if (settingsRef.current.pageTurnMode === 'scroll') {
+          e.preventDefault()
+          viewRef.current?.renderer?.pan?.(0, e.deltaY)
+        }
       },
       opts,
     )
@@ -852,6 +891,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           if (savedRanges.current.has(doc)) return
           clearHandles(doc)
           onSelectionRef.current(null)
+          return
+        }
+        const text = sel.toString()
+        const saved = savedRanges.current.get(doc)
+        if (!saved && isHugeNativeSelection(text, 0)) {
+          hidingNative.current.add(doc)
+          sel.removeAllRanges()
+          window.setTimeout(() => hidingNative.current.delete(doc), 0)
           return
         }
         emitDocSelection(doc)
@@ -1011,17 +1058,37 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
 
+  const settingsKey = [
+    settings.flow,
+    settings.pageTurnMode,
+    settings.margin,
+    settings.maxInlineSize,
+    settings.gap,
+    settings.fontSize,
+    settings.fontFamily,
+    settings.lineHeight,
+    settings.theme,
+    settings.customBg,
+    settings.customFg,
+    settings.customLink,
+    settings.justify,
+    settings.hyphenate,
+    settings.writingMode,
+    settings.footnotePosition,
+    settings.invertImagesInNight,
+  ].join('|')
+
   useEffect(() => {
     const view = viewRef.current
     if (!view?.renderer || pinchRef.current.active) return
-    applyRendererLayout(view.renderer, settings)
-    view.renderer.setStyles?.(buildReaderCSS(settings))
+    applyRendererLayout(view.renderer, settingsRef.current)
+    view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      part.doc?.documentElement.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-      part.doc?.documentElement.style.setProperty('font-family', settings.fontFamily, 'important')
-      part.doc?.body?.style.setProperty('font-family', settings.fontFamily, 'important')
+      part.doc?.documentElement.style.setProperty('font-size', `${settingsRef.current.fontSize}px`, 'important')
+      part.doc?.documentElement.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
+      part.doc?.body?.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
     }
-  }, [settings])
+  }, [settingsKey])
 
   useEffect(() => {
     const view = viewRef.current
@@ -1072,13 +1139,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return
-      e.preventDefault()
-      const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
-      settingsRef.current = { ...settingsRef.current, fontSize: next }
-      applyLiveFont(next)
-      onFontSizeRef.current(next)
-      window.setTimeout(() => showPinchBadge(next, false), 700)
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        const next = clampFont(settingsRef.current.fontSize + (e.deltaY < 0 ? 1 : -1))
+        settingsRef.current = { ...settingsRef.current, fontSize: next }
+        applyLiveFont(next)
+        onFontSizeRef.current(next)
+        window.setTimeout(() => showPinchBadge(next, false), 700)
+        return
+      }
+      if (settingsRef.current.pageTurnMode === 'scroll') {
+        e.preventDefault()
+        viewRef.current?.renderer?.pan?.(0, e.deltaY)
+      }
     }
 
     host.addEventListener('touchstart', onTouchStart, { passive: false })

@@ -289,7 +289,7 @@ select option { background: #1c1917; color: #fafaf9; }
   --chrome-h: 0px;
 }
 .reader.chrome-on {
-  --chrome-h: 64px;
+  --chrome-h: 48px;
 }
 .foliate-host {
   position: absolute;
@@ -297,7 +297,7 @@ select option { background: #1c1917; color: #fafaf9; }
   touch-action: pan-x pan-y;
 }
 .reader.chrome-on .foliate-host {
-  top: max(64px, var(--chrome-h));
+  top: max(48px, var(--chrome-h));
 }
 .foliate-host foliate-view {
   display: block;
@@ -325,18 +325,18 @@ select option { background: #1c1917; color: #fafaf9; }
 .reader-top {
   top: 0;
   flex-wrap: nowrap;
-  min-height: 56px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: 16px;
-  padding-right: 16px;
+  min-height: 44px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 8px;
+  padding-right: 8px;
   overflow: visible;
 }
 .chrome-btn {
   flex: none;
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -539,7 +539,7 @@ select option { background: #1c1917; color: #fafaf9; }
 }
 .reader-menu {
   position: absolute;
-  top: calc(max(64px, var(--chrome-h, 64px)) + 6px);
+  top: calc(max(48px, var(--chrome-h, 48px)) + 4px);
   right: 10px;
   z-index: 6;
   display: grid;
@@ -651,6 +651,24 @@ select option { background: #1c1917; color: #fafaf9; }
   font-size: 13px;
   color: #e7e5e4;
   line-height: 1.35;
+}
+.bookmark-sheet {
+  max-height: 42%;
+  padding: 8px 12px 16px;
+}
+.bookmark-sheet .selection-quote {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.bookmark-sheet .field {
+  margin: 6px 0;
+}
+.bookmark-sheet .sheet-head {
+  margin-bottom: 6px;
 }
 .selection-actions {
   display: flex;
