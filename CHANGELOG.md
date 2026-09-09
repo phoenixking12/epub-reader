@@ -2,6 +2,18 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.1 — 2026-09-09
+
+### Fixed
+
+- Top inset is only the status bar, so reading text sits just under the notification icons
+- Paginated chapters no longer sit in a tall empty band; the page fills to an 8px margin
+- Long-press selects a word instead of the whole paragraph or page
+- Vertical pans (and the mouse wheel) in Scroll mode move through the chapter; sideways swipe still changes chapter
+- Paragraph bookmark marks are 8px dots with a 28px tap target; the name sheet is compact
+- Chapter subheadings (`h2`/`h3` and common subtitle classes) render larger and bold
+- Android versionCode 9 so this APK updates 3.1.0 and 3.0.x installs
+
 ## 3.0.3 — 2026-09-09
 
 ### Fixed
