@@ -245,7 +245,9 @@ export function applyRendererLayout(
 ) {
   if (!renderer) return
   renderer.setAttribute('flow', flowForPageTurn(settings.pageTurnMode))
-  renderer.setAttribute('margin', `${settings.margin}px`)
+  // Vertical inset is only the Android status / nav bars on the host.
+  // The side-margin setting is applied as host padding-inline, not page chrome.
+  renderer.setAttribute('margin', '0px')
   renderer.setAttribute('max-inline-size', `${settings.maxInlineSize}px`)
   renderer.setAttribute('gap', `${settings.gap}%`)
   renderer.setAttribute('max-column-count', '1')

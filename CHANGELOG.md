@@ -2,6 +2,14 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.7 — 2026-09-10
+
+### Fixed
+
+- Long-press then scrolling no longer makes the words jitter: selection stays live until you lift, a vertical pan cancels it, and the page does not turn to chase the caret
+- The page uses the full screen except the Android notification and option bars (no extra black page chrome; the side-margin slider only insets left/right)
+- Highlighting, dismissing a selection, or removing a mark no longer opens the reading title bar
+
 ## 3.1.6 — 2026-09-10
 
 ### Fixed
