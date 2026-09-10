@@ -34,6 +34,10 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/user-select: text/)
     expect(css).not.toMatch(/user-select: none/)
   })
+
+  it('clears publisher top padding so the first line sits under the status bar', () => {
+    expect(css).toMatch(/body > :first-child[\s\S]*padding-top: 0/)
+  })
 })
 
 describe('applyRendererLayout', () => {
@@ -41,6 +45,7 @@ describe('applyRendererLayout', () => {
     const el = document.createElement('div')
     applyRendererLayout(el, { ...DEFAULT_DISPLAY, margin: 36 })
     expect(el.getAttribute('margin')).toBe('0px')
+    expect(el.getAttribute('gap')).toBe('0%')
     expect(el.getAttribute('flow')).toBe('paginated')
   })
 
@@ -49,5 +54,6 @@ describe('applyRendererLayout', () => {
     applyRendererLayout(el, { ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
     expect(el.getAttribute('flow')).toBe('scrolled')
     expect(el.getAttribute('margin')).toBe('0px')
+    expect(el.getAttribute('gap')).toBe('0%')
   })
 })
