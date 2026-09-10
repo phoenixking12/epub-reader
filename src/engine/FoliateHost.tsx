@@ -178,6 +178,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const onFontSizeRef = useRef(onFontSizeChange)
   const savedRanges = useRef(new WeakMap<Document, Range>())
   const hidingNative = useRef(new WeakSet<Document>())
+  const liveSelectDocs = useRef(new WeakSet<Document>())
   const tapRef = useRef({ t: 0, x: 0, y: 0, timer: 0 })
   const scrollPanRef = useRef({ lastY: 0, lastT: 0, vy: 0, active: false, raf: 0, suppressTapUntil: 0 })
 
@@ -467,6 +468,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   }
 
   const clearHandles = (doc: Document) => {
+    liveSelectDocs.current.delete(doc)
     doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
     savedRanges.current.delete(doc)
     clearSelHighlight(doc)
@@ -613,7 +615,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     doc.addEventListener('contextmenu', (e) => e.preventDefault())
   }
 
-  const emitDocSelection = (doc: Document, overlayCfi?: string) => {
+  const emitDocSelection = (doc: Document, overlayCfi?: string, mode: 'live' | 'commit' = 'commit') => {
     let sel = doc.getSelection()
     if (!sel?.rangeCount || sel.isCollapsed) {
       const saved = savedRanges.current.get(doc)
@@ -633,13 +635,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     sel = doc.getSelection()
     if (!info || !sel?.rangeCount) {
       if (savedRanges.current.has(doc) && doc.querySelector('.lg-sel-handle')) return
+      liveSelectDocs.current.delete(doc)
       clearHandles(doc)
       onSelectionRef.current(null)
       return
     }
     const range = sel.getRangeAt(0)
-    const box = rangeBox(range)
     savedRanges.current.set(doc, range.cloneRange())
+    if (mode === 'live') {
+      liveSelectDocs.current.add(doc)
+      onSelectionRef.current(info)
+      return
+    }
+    liveSelectDocs.current.delete(doc)
+    const box = rangeBox(range)
     paintSelHighlight(doc, range)
     const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
       let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
@@ -681,7 +690,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (state.emitRaf) return
       state.emitRaf = requestAnimationFrame(() => {
         state.emitRaf = 0
-        emitDocSelection(doc)
+        emitDocSelection(doc, undefined, 'live')
       })
     }
     const abortSelectToPan = () => {
@@ -689,6 +698,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       state.selecting = false
       state.handle = null
       state.anchorNode = null
+      liveSelectDocs.current.delete(doc)
       clearHandles(doc)
       doc.getSelection()?.removeAllRanges()
       onSelectionRef.current(null)
@@ -717,6 +727,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (handleEl) {
           e.preventDefault()
           e.stopPropagation()
+          clearSelHighlight(doc)
+          doc.documentElement.classList.remove('lg-custom-sel')
           const sel = restoreSavedRange(doc) ?? doc.getSelection()
           if (!sel?.rangeCount) return
           const range = sel.getRangeAt(0)
@@ -741,7 +753,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           if (state.panning) return
           if (selectWordAt(doc, state.x, state.y)) {
             state.selecting = true
-            emitDocSelection(doc)
+            doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
+            clearSelHighlight(doc)
+            doc.documentElement.classList.remove('lg-custom-sel')
+            emitDocSelection(doc, undefined, 'live')
             navigator.vibrate?.(12)
           }
         }, 350)
@@ -775,7 +790,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (moved > 8) window.clearTimeout(state.timer)
-        if (state.selecting && scrollMode && Math.abs(totalY) > 22 && Math.abs(totalY) > Math.abs(totalX) * 1.15) {
+        if (
+          state.selecting &&
+          !state.handle &&
+          scrollMode &&
+          Math.abs(totalY) > 8 &&
+          Math.abs(totalY) > Math.abs(totalX) * 1.05
+        ) {
           abortSelectToPan()
           state.panning = true
           beginChapterPan(t.clientY, e.timeStamp)
@@ -1065,7 +1086,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const onLoad = (e: Event) => {
       const { doc } = (e as CustomEvent).detail as { doc: Document; index: number }
       doc.addEventListener('selectionchange', () => {
-        if (hidingNative.current.has(doc)) return
+        if (hidingNative.current.has(doc) || liveSelectDocs.current.has(doc)) return
         const sel = doc.getSelection()
         if (!sel || sel.isCollapsed) {
           if (savedRanges.current.has(doc)) return
@@ -1355,7 +1376,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       <div
         ref={rootRef}
         className="foliate-host"
-        style={{ background: bg }}
+        style={{ background: bg, ['--lg-side' as string]: `${settings.margin}px` }}
         onDoubleClick={(e) => {
           if ((e.target as HTMLElement).classList.contains('foliate-host')) onTapCenter()
         }}
