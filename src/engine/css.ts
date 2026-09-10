@@ -51,6 +51,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       -webkit-tap-highlight-color: transparent;
       overscroll-behavior: none;
     }
+    body > :first-child,
+    body > :first-child > :first-child {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
     * {
       -webkit-touch-callout: none !important;
     }
@@ -249,6 +254,6 @@ export function applyRendererLayout(
   // The side-margin setting is applied as host padding-inline, not page chrome.
   renderer.setAttribute('margin', '0px')
   renderer.setAttribute('max-inline-size', `${settings.maxInlineSize}px`)
-  renderer.setAttribute('gap', `${settings.gap}%`)
+  renderer.setAttribute('gap', '0%')
   renderer.setAttribute('max-column-count', '1')
 }

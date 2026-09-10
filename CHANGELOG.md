@@ -2,6 +2,14 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.8 — 2026-09-10
+
+### Fixed
+
+- Android no longer treats status/nav bar insets as raw pixels, so the page is not pushed down by a 2–3× black band. Only the notification bar and option bar are reserved
+- Publisher chapter padding at the top of the page is cleared so the first line sits just under the status icons
+- Paginator column gap is no longer added on top of the side-margin setting
+
 ## 3.1.7 — 2026-09-10
 
 ### Fixed

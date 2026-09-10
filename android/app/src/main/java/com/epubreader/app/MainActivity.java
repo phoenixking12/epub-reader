@@ -56,13 +56,30 @@ public class MainActivity extends BridgeActivity {
                 v.setLayoutParams(lp);
             }
             v.setPadding(0, 0, 0, 0);
+            // WindowInsets are device pixels. CSS px is devicePx / devicePixelRatio.
+            // Writing raw pixels as "72px" triples the gap on a 3x phone.
+            float density = v.getResources().getDisplayMetrics().density;
+            if (density < 0.5f) density = 1f;
             String js =
-                    "document.documentElement.style.setProperty('--lg-sat','"
+                    "(function(){"
+                            + "var root=document.documentElement;"
+                            + "root.setAttribute('data-lg-sat-px','"
                             + status.top
-                            + "px');"
-                            + "document.documentElement.style.setProperty('--lg-sab','"
+                            + "');"
+                            + "root.setAttribute('data-lg-sab-px','"
                             + nav.bottom
-                            + "px');";
+                            + "');"
+                            + "var d=window.devicePixelRatio||"
+                            + density
+                            + ";"
+                            + "if(!d||d<0.5)d=1;"
+                            + "root.style.setProperty('--lg-sat',("
+                            + status.top
+                            + "/d)+'px');"
+                            + "root.style.setProperty('--lg-sab',("
+                            + nav.bottom
+                            + "/d)+'px');"
+                            + "})()";
             if (v instanceof WebView) {
                 ((WebView) v).evaluateJavascript(js, null);
             }
