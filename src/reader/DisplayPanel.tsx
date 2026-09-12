@@ -140,6 +140,20 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               </label>
             </div>
           )}
+          <p className="field-label">Default highlight</p>
+          <ColorRow
+            color={settings.defaultAnnotationColor}
+            customColors={settings.customHighlightColors}
+            wheelOpen={wheelOpen}
+            onToggleWheel={() => setWheelOpen((v) => !v)}
+            onPick={(c) => onChange({ defaultAnnotationColor: c })}
+            onWheelCommit={(c) =>
+              onChange({
+                defaultAnnotationColor: c,
+                customHighlightColors: rememberCustomColor(settings.customHighlightColors, c),
+              })
+            }
+          />
           <p className="field-label">Turn pages</p>
           <div className="action-row">
             {TURN_MODES.map((mode) => (

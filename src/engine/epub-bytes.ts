@@ -11,9 +11,9 @@ export function buildMinimalEpub(opts?: {
     opts?.chapter ??
     `<p>This is a sample EPUB so you can try the reader without finding a file first.</p>
      <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
-     <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>
+     <p>Long-press to select a word, then highlight, underline, recolor, or look it up.</p>
      <p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
-     <p>Tap a paragraph to name a bookmark, or use the star on the reading bar. Long-press a word to highlight it.</p>
+     <p>Tap a paragraph to name a bookmark, or use Bookmark on the reading bar. Long-press a word to highlight it.</p>
      <p>Chapter two has a scene heading and a smaller subheading so you can check type size and weight.</p>
      <p>Keep sliding. Scroll mode should keep the same chapter on screen until you swipe sideways for the next one.</p>
      <p>A long chapter is the usual case. This sample is padded so you can feel the pan without opening another book.</p>

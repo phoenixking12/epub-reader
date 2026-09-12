@@ -7,6 +7,7 @@ import type { BookRecord, LibraryGroup, LibrarySort } from '../types/models'
 import { importEpubFile, removeBook } from './importBook'
 import { addBooksFromFiles, formatImportSummary, ingestNativeItems, pickNativeBooks } from './addBooks'
 import { groupBooks } from './sort'
+import { BookShelf } from './BookShelf'
 
 interface Props {
   onOpen: (id: string) => void
@@ -25,6 +26,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [addOpen, setAddOpen] = useState(false)
+  const [entered, setEntered] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null)
   const [labelBook, setLabelBook] = useState<BookRecord | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -105,9 +107,14 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
     else folderRef.current?.click()
   }
 
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setEntered(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
+
   return (
     <div
-      className="library"
+      className={`library ${entered ? 'entered' : ''}`}
       onClick={() => {
         setMenuId(null)
         setLabelBook(null)
@@ -169,6 +176,8 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
 
       {error && <p className="error">{error}</p>}
       {status && <p className="ok">{status}</p>}
+
+      <BookShelf books={filtered} onOpen={onOpen} />
 
       {sections.map((section) => (
         <section key={section.heading ?? 'all'} className="author-block">

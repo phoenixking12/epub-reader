@@ -5,6 +5,7 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 ## Library
 
 - **+ Add** copies EPUB files or a whole folder into the app.
+- The shelf at the top shows one spine for every book, with the same titles as the grid below.
 - The **⋮** menu on a cover pins a book, edits labels, deletes it, or (on Android) adds a home-screen shortcut.
 - **Settings** covers lookup engines, backups, and default highlight color.
 
@@ -15,14 +16,14 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 You get the title in the middle, with:
 
 - **☰** — contents, bookmarks, and Library
-- **☆** — bookmark the current place
-- **⋮** — Notes, Text, Display, Color, find, bookmark this page
+- **Bookmark** (ribbon icon) — save the current place
+- **⋮** — Notes, Text, Display, Find in book, and Listen when the book has audio
 
 If **Display → Buttons** is on, previous/next page buttons appear as well.
 
 The reading bar sits immediately under the notification icons. The dark bar runs behind the status icons; the buttons sit just below them, with no extra black gap.
 
-The corner shows **book and chapter percent** while you scroll, or **chapter page n / N** in page modes.
+The scrubber at the bottom shows **% of book** and **% of chapter** while you scroll, or **chapter page n / N** in page modes. Drag it to jump. In scroll mode, the rail on the right jumps within the chapter.
 
 ## Turn pages
 
@@ -37,15 +38,17 @@ In **Menu → Display → Turn pages**:
 
 ## Bookmarks
 
-**Single-tap a paragraph** to show a small bookmark button next to each block, then tap that button to name it. **☆** on the reading bar, or **Bookmark this page** in Menu, saves the current place. Find them under **☰ → Bookmarks**.
+**Single-tap a paragraph** to show a small bookmark mark next to each block, then tap that mark to name it. **Bookmark** on the reading bar saves the current place. Find them under **☰ → Bookmarks**. Tap a bookmark to jump to that exact spot in the book.
 
 ## Highlights and notes
 
 1. Long-press a word, then drag the orange handles to set the start and end.
 2. The tool panel appears **above** the selection.
 3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once.
-4. Tap an existing mark to select the whole span, then change its color/style or **Remove**.
+4. Tap an existing mark (including font-color text) to select the whole span, then change its color/style or **Remove**.
 5. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
+
+Highlight color also lives in **Display**.
 
 ## Brightness
 
@@ -56,9 +59,9 @@ In **Menu → Display → Turn pages**:
 | Gesture | Result |
 | --- | --- |
 | Double-tap | Show or hide Library and Menu |
-| Single-tap a paragraph | Show a bookmark button next to each paragraph |
-| Tap a paragraph bookmark button | Name a bookmark for that paragraph |
-| Single-tap a highlight | Select the whole mark |
+| Single-tap a paragraph | Show a bookmark mark next to each paragraph |
+| Tap a paragraph bookmark mark | Name a bookmark for that paragraph |
+| Single-tap a highlight or font-color span | Select the whole mark |
 | Tap away from a selection | Drop the selection |
 | Swipe (in Swipe mode) | Turn the page |
 | Drag vertically (in Scroll mode) | Move through the chapter |

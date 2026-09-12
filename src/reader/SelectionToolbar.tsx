@@ -59,7 +59,7 @@ export function SelectionToolbar({
   useEffect(() => {
     if (visible) {
       setColor(defaultColor)
-      setStyle(defaultStyle === 'highlight' || defaultStyle === 'underline' || defaultStyle === 'textColor' ? defaultStyle : 'highlight')
+      setStyle(defaultStyle)
       setWheelOpen(false)
       setMoreOpen(false)
     }

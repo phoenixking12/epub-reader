@@ -4,9 +4,7 @@ interface Props {
   onNotes: () => void
   onText: () => void
   onDisplay: () => void
-  onColor: () => void
   onFind: () => void
-  onBookmarkPage: () => void
   onAudio: () => void
   onClose: () => void
 }
@@ -17,9 +15,7 @@ export function ReaderMenu({
   onNotes,
   onText,
   onDisplay,
-  onColor,
   onFind,
-  onBookmarkPage,
   onAudio,
   onClose,
 }: Props) {
@@ -41,14 +37,8 @@ export function ReaderMenu({
         <button type="button" role="menuitem" onClick={() => go(onDisplay)}>
           Display
         </button>
-        <button type="button" role="menuitem" onClick={() => go(onColor)}>
-          Color
-        </button>
         <button type="button" role="menuitem" onClick={() => go(onFind)}>
           Find in book
-        </button>
-        <button type="button" role="menuitem" onClick={() => go(onBookmarkPage)}>
-          Bookmark this page
         </button>
         {hasMedia && (
           <button type="button" role="menuitem" onClick={() => go(onAudio)}>

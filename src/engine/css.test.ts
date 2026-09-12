@@ -15,8 +15,13 @@ describe('buildReaderCSS', () => {
   })
 
   it('keeps paragraph bookmark marks small', () => {
-    expect(css).toMatch(/\.lg-pmark::after[\s\S]*width: 7px/)
+    expect(css).toMatch(/\.lg-pmark::after[\s\S]*width: 10px/)
     expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 28px/)
+  })
+
+  it('groups font-color marks as a tinted span', () => {
+    expect(css).toMatch(/data-lg-kind="textColor"/)
+    expect(css).toMatch(/box-decoration-break: clone/)
   })
 
   it('disables native iframe pan in scroll mode so chapter pan can run', () => {

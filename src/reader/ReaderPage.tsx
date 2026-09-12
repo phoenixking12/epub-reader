@@ -14,6 +14,7 @@ import { DisplayPanel, type DisplaySection } from './DisplayPanel'
 import { Drawer, type DrawerMode, type DrawerTab } from './Drawer'
 import { ImageLightbox } from './ImageLightbox'
 import { formatCornerProgress } from './progress'
+import { ProgressScrub } from './ProgressScrub'
 import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -225,7 +226,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
         bookmarks={bookmarks}
         showParagraphMarks={marksOn}
         onRelocate={({ cfi, fraction, locLabel, sectionFraction, page, pages, scrolled }) => {
-          locationRef.current = { cfi, quote: locLabel }
+          const live = host.current?.getLocation()
+          locationRef.current = {
+            cfi: live?.cfi || cfi,
+            quote: live?.quote || locLabel,
+          }
           setFrac((v) => (v === fraction ? v : fraction))
           setChapterFrac((v) => (v === sectionFraction ? v : sectionFraction))
           setLoc((v) => (v === locLabel ? v : locLabel))
@@ -282,14 +287,15 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onFontSizeChange={(size) => void patchDisplay({ fontSize: size })}
       />
 
-      <div
-        className={`reader-progress ${showChrome ? 'on' : ''}`}
-        style={{ color: colors.fg }}
-        aria-hidden
-      >
-        <strong>{corner.primary}</strong>
-        <span>{corner.secondary}</span>
-      </div>
+      <ProgressScrub
+        bookFraction={frac}
+        chapterFraction={chapterFrac}
+        primary={corner.primary}
+        secondary={corner.secondary}
+        showChapterRail={display.pageTurnMode === 'scroll' || pageInfo.scrolled}
+        onBookJump={(n) => void host.current?.goToFraction(n)}
+        onChapterJump={(n) => host.current?.scrollChapterTo(n)}
+      />
 
       <div
         className="brightness-veil"
@@ -326,7 +332,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
           )}
           <button
             className="icon-btn chrome-btn"
-            aria-label="Bookmark this page"
+            aria-label="Bookmark this place"
             onClick={() => {
               const live = host.current?.getLocation()
               openBookmarkSheet({
@@ -337,7 +343,9 @@ export function ReaderPage({ bookId, onBack }: Props) {
               })
             }}
           >
-            ☆
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path fill="currentColor" d="M6 2.75h12c.69 0 1.25.56 1.25 1.25V21.2l-7.25-4.05L4.75 21.2V4c0-.69.56-1.25 1.25-1.25Z" />
+            </svg>
           </button>
           <button
             className="icon-btn chrome-btn"
@@ -367,20 +375,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
             setDisplaySection('display')
             setDisplayOpen(true)
           }}
-          onColor={() => {
-            setDisplaySection('color')
-            setDisplayOpen(true)
-          }}
           onFind={() => setSearchOpen(true)}
-          onBookmarkPage={() => {
-            const live = host.current?.getLocation()
-            openBookmarkSheet({
-              cfi: live?.cfi || locationRef.current.cfi || book.progressCfi || '',
-              quote: live?.quote || locationRef.current.quote || loc,
-              kind: 'position',
-              title: live?.quote || locationRef.current.quote || loc || 'Current position',
-            })
-          }}
           onAudio={() => host.current?.startMediaOverlay()}
         />
       )}
@@ -395,9 +390,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onTab={setDrawerTab}
         onClose={() => setDrawer(false)}
         onLibrary={onBack}
-        onGoTo={(t) => {
-          void host.current?.goTo(t)
+        onGoTo={(t, quote) => {
           setDrawer(false)
+          window.setTimeout(() => {
+            void host.current?.goToBookmark(t, quote)
+          }, 80)
         }}
         onRenameBookmark={(id, title) => void db.bookmarks.update(id, { title })}
         onDeleteBookmark={(id) => void db.bookmarks.delete(id)}
@@ -439,7 +436,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onRegexChange={(v) => void saveSettings({ regexSearch: v })}
         onSearch={(q) => host.current?.search(q, settingsRow.regexSearch) ?? Promise.resolve([])}
         onGoTo={(cfi) => {
-          void host.current?.goTo(cfi)
+          void host.current?.goToBookmark(cfi)
           setSearchOpen(false)
         }}
         onClose={() => {
@@ -460,8 +457,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onHighlight={(style, color) => {
           if (!selection) return
           void (async () => {
-            if (selectedAnn) await db.annotations.update(selectedAnn.id, { style, color })
-            else await addAnnotation(selection, style, color)
+            if (selectedAnn) {
+              await db.annotations.update(selectedAnn.id, { style, color })
+            } else {
+              const rec = await addAnnotation(selection, style, color)
+              setSelection((s) => (s ? { ...s, annotationId: rec.id } : s))
+            }
             await saveSettings({
               display: {
                 ...settingsRow.display,
@@ -470,8 +471,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
                 customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
               },
             })
-            host.current?.deselect()
-            setSelection(null)
           })()
         }}
         onNote={() => {

@@ -99,7 +99,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     .lg-pmark {
       position: absolute;
       left: 0;
-      top: 0.15em;
+      top: 0.1em;
       width: 28px;
       height: 28px;
       margin: 0;
@@ -113,16 +113,32 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     .lg-pmark::after {
       content: "";
       position: absolute;
-      left: 2px;
-      top: 6px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: ${bg};
-      box-shadow: inset 0 0 0 1.5px ${link};
+      left: 3px;
+      top: 4px;
+      width: 10px;
+      height: 14px;
+      background: ${link};
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+      opacity: 0.85;
     }
     .lg-pmark.on::after {
-      background: ${link};
+      opacity: 1;
+      filter: drop-shadow(0 0 2px ${link});
+    }
+    span[data-lg-ann][data-lg-kind="textColor"] {
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+      border-radius: 2px;
+      background-color: color-mix(in srgb, currentColor 18%, transparent);
+    }
+    span[data-lg-ann][data-lg-kind="bold"],
+    span[data-lg-ann][data-lg-kind="italic"] {
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+      outline: 2px solid ${link};
+      outline-offset: 3px;
+      border-radius: 2px;
     }
     .lg-sel-handle {
       position: fixed;

@@ -14,7 +14,7 @@ interface Props {
   onTab: (tab: DrawerTab) => void
   onClose: () => void
   onLibrary?: () => void
-  onGoTo: (target: string) => void
+  onGoTo: (target: string, quote?: string) => void
   onRenameBookmark: (id: string, title: string) => void
   onDeleteBookmark: (id: string) => void
   onDeleteAnnotation: (id: string) => void
@@ -117,7 +117,7 @@ export function Drawer({
         {mode === 'nav' && tab === 'marks' && (
           <ul className="list">
             {orderedMarks.length === 0 && (
-              <li className="muted empty-hint">Tap a paragraph bookmark icon, then give it a name.</li>
+              <li className="muted empty-hint">Double-tap to show the reading bar, then tap Bookmark. Or tap a paragraph and tap its bookmark mark.</li>
             )}
             {orderedMarks.map((b) => (
               <li key={b.id} className="mark-row">
@@ -137,7 +137,7 @@ export function Drawer({
                   </form>
                 ) : (
                   <>
-                    <button className="toc-item" onClick={() => onGoTo(b.cfi)}>
+                    <button className="toc-item" onClick={() => onGoTo(b.cfi, b.quote)}>
                       <span className="hl-kind">{kindLabel(b.kind)}</span>
                       <strong>{b.title || 'Bookmark'}</strong>
                       {b.quote ? <span className="quote">{b.quote}</span> : null}
@@ -169,7 +169,7 @@ export function Drawer({
             )}
             {notes.map((a) => (
               <li key={a.id} className="mark-row">
-                <button className="toc-item highlight-item" onClick={() => onGoTo(a.cfiRange)}>
+                <button className="toc-item highlight-item" onClick={() => onGoTo(a.cfiRange, a.quote)}>
                   <i className="hl-bar" style={{ background: a.color }} />
                   <span>
                     <span className="hl-kind">{styleLabel(a.style)}</span>

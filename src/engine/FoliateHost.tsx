@@ -10,7 +10,9 @@ import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
+import { chapterReadFraction, quoteLooksLike } from '../reader/progress'
 import { usesPublisherFont } from '../settings/defaults'
+import { installCfiIgnore } from './cfiIgnore'
 
 export interface SelectionInfo {
   cfi: string
@@ -62,6 +64,8 @@ export interface FoliateHandle {
   goToFraction: (n: number) => Promise<void>
   applySettings: (settings: DisplaySettings) => void
   relayout: () => void
+  scrollChapterTo: (fraction: number) => void
+  goToBookmark: (target: string, quote?: string) => Promise<void>
   getSelection: () => SelectionInfo | null
   getLocation: () => { cfi: string; quote: string }
   deselect: () => void
@@ -111,28 +115,102 @@ function unwrapAnnSpans(doc: Document, id: string) {
   })
 }
 
-function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
-  if (rec.style !== 'textColor' && rec.style !== 'bold' && rec.style !== 'italic') return
-  unwrapAnnSpans(doc, rec.id)
-  const span = doc.createElement('span')
+function isInlineMark(style: AnnotationRecord['style']) {
+  return style === 'textColor' || style === 'bold' || style === 'italic'
+}
+
+function styleInlineSpan(span: HTMLElement, rec: AnnotationRecord) {
   span.dataset.lgAnn = rec.id
+  span.dataset.lgKind = rec.style
+  span.removeAttribute('style')
   if (rec.style === 'textColor') span.style.setProperty('color', rec.color, 'important')
   if (rec.style === 'bold') span.style.setProperty('font-weight', '700', 'important')
   if (rec.style === 'italic') span.style.setProperty('font-style', 'italic', 'important')
+}
+
+function retargetRange(range: Range, node: Node) {
+  try {
+    range.selectNode(node)
+  } catch {
+    try {
+      range.selectNodeContents(node)
+    } catch {
+      /* detached */
+    }
+  }
+}
+
+function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
+  if (!isInlineMark(rec.style)) {
+    unwrapAnnSpans(doc, rec.id)
+    return
+  }
+  const existing = [...doc.querySelectorAll(`[data-lg-ann="${CSS.escape(rec.id)}"]`)]
+  if (existing.length) {
+    for (const el of existing) {
+      if (el instanceof HTMLElement) styleInlineSpan(el, rec)
+    }
+    retargetRange(range, existing[0]!)
+    return
+  }
+  const span = doc.createElement('span')
+  styleInlineSpan(span, rec)
   try {
     range.surroundContents(span)
   } catch {
     span.append(range.extractContents())
     range.insertNode(span)
   }
-  const Win = doc.defaultView
-  if (!Win?.Highlight || !Win.CSS?.highlights) return
-  const name = `ann-${rec.id}`
-  try {
-    Win.CSS.highlights.set(name, new Win.Highlight(range))
-  } catch {
-    /* ignore */
+  retargetRange(range, span)
+}
+
+function flashArrived(node: Node | Range | null) {
+  const el =
+    node instanceof Range
+      ? node.commonAncestorContainer instanceof Element
+        ? node.commonAncestorContainer
+        : node.commonAncestorContainer.parentElement
+      : node instanceof Element
+        ? node
+        : node?.parentElement ?? null
+  const block =
+    el?.closest?.('p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption, div') ?? el
+  if (!(block instanceof HTMLElement)) return
+  block.classList.add('lg-arrived')
+  window.setTimeout(() => block.classList.remove('lg-arrived'), 1400)
+}
+
+function revealQuote(view: View, quote?: string) {
+  const renderer = view.renderer as {
+    scrollToAnchor?: (anchor: Range | number, select?: boolean) => Promise<void>
+    getContents: () => Array<{ doc?: Document; index: number }>
   }
+  if (quote?.trim()) {
+    const needle = quote.replace(/\s+/g, ' ').trim()
+    for (const { doc } of renderer.getContents()) {
+      if (!doc) continue
+      for (const block of bookmarkBlocks(doc)) {
+        const text = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim()
+        if (!quoteLooksLike(text, needle)) continue
+        const range = doc.createRange()
+        try {
+          range.selectNodeContents(block)
+        } catch {
+          continue
+        }
+        void renderer.scrollToAnchor?.(range)
+        flashArrived(block)
+        return true
+      }
+    }
+  }
+  const loc = view.lastLocation
+  if (loc?.range instanceof Range) {
+    void renderer.scrollToAnchor?.(loc.range)
+    flashArrived(loc.range)
+    return true
+  }
+  return false
 }
 
 export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost(
@@ -182,6 +260,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const liveSelectDocs = useRef(new WeakSet<Document>())
   const tapRef = useRef({ t: 0, x: 0, y: 0, timer: 0 })
   const scrollPanRef = useRef({ lastY: 0, lastT: 0, vy: 0, active: false, raf: 0, suppressTapUntil: 0 })
+  const ignoreSelRef = useRef(false)
 
   settingsRef.current = settings
   annotationsRef.current = annotations
@@ -237,14 +316,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     s.lastY = clientY
     s.lastT = time
     s.active = true
-    panChapter(-dy * 1.28)
+    panChapter(-dy)
   }
 
   const flingChapter = () => {
     const s = scrollPanRef.current
-    if (s.active) s.suppressTapUntil = Date.now() + 220
+    if (s.active) s.suppressTapUntil = Date.now() + 200
     s.active = false
-    let vy = s.vy * 1.85
+    let vy = s.vy * 1.55
     if (Math.abs(vy) < 0.16) return
     let last = performance.now()
     const step = (now: number) => {
@@ -401,7 +480,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const box = rangeBox(range)
     const origin = toViewport(doc, 0, 0)
     const cfi = overlayCfi || cfiFor(index, range)
-    const rec = annotationsRef.current.find((a) => a.cfiRange === cfi)
+    const wrap =
+      range.commonAncestorContainer instanceof Element
+        ? range.commonAncestorContainer.closest?.('[data-lg-ann]')
+        : range.commonAncestorContainer.parentElement?.closest?.('[data-lg-ann]')
+    const wrapId = wrap instanceof HTMLElement ? wrap.dataset.lgAnn : undefined
+    const rec =
+      annotationsRef.current.find((a) => a.cfiRange === cfi) ||
+      annotationsRef.current.find((a) => a.id === wrapId)
     return {
       cfi,
       text,
@@ -419,14 +505,27 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const hitAnnotation = (doc: Document, x: number, y: number) => {
     const view = viewRef.current
     if (!view?.renderer) return null
+    const el = doc.elementFromPoint(x, y)
+    const wrap = el?.closest?.('[data-lg-ann]')
+    if (wrap instanceof HTMLElement && wrap.dataset.lgAnn) {
+      const rec = annotationsRef.current.find((a) => a.id === wrap.dataset.lgAnn)
+      if (rec) {
+        const around = doc.createRange()
+        try {
+          around.selectNodeContents(wrap)
+          return { value: rec.cfiRange, range: around }
+        } catch {
+          /* fall through */
+        }
+      }
+    }
     const part = view.renderer.getContents().find((c) => c.doc === doc)
     const overlayer = part?.overlayer as
       | { hitTest?: (pt: { x: number; y: number }) => [string?, Range?] }
       | undefined
-    if (!overlayer?.hitTest) return null
-    const [value, range] = overlayer.hitTest({ x, y })
-    if (!value || value.startsWith('foliate-search:') || !range) return null
-    return { value, range }
+    const [value, range] = overlayer?.hitTest?.({ x, y }) ?? []
+    if (value && !value.startsWith('foliate-search:') && range) return { value, range }
+    return null
   }
 
   const clearSelHighlight = (doc: Document) => {
@@ -490,7 +589,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (quote.length < 2) continue
         const range = doc.createRange()
         try {
-          range.selectNodeContents(block)
+          const mark = block.querySelector(':scope > .lg-pmark')
+          if (mark?.nextSibling) {
+            range.setStartBefore(mark.nextSibling)
+            range.setEndAfter(block.lastChild as Node)
+          } else {
+            range.selectNodeContents(block)
+          }
         } catch {
           continue
         }
@@ -696,13 +801,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       })
     }
     const abortSelectToPan = () => {
+      ignoreSelRef.current = true
       window.clearTimeout(state.timer)
       state.selecting = false
       state.handle = null
       state.anchorNode = null
       liveSelectDocs.current.delete(doc)
       clearHandles(doc)
+      hidingNative.current.add(doc)
       doc.getSelection()?.removeAllRanges()
+      window.setTimeout(() => {
+        hidingNative.current.delete(doc)
+        ignoreSelRef.current = false
+      }, 80)
       onSelectionRef.current(null)
     }
     doc.addEventListener(
@@ -761,7 +872,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
             emitDocSelection(doc, undefined, 'live')
             navigator.vibrate?.(12)
           }
-        }, 350)
+        }, 480)
       },
       { capture: true, passive: false },
     )
@@ -791,12 +902,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           state.lastY = t.clientY
           return
         }
-        if (moved > 8) window.clearTimeout(state.timer)
+        if (moved > 5) window.clearTimeout(state.timer)
         if (
           state.selecting &&
           !state.handle &&
           scrollMode &&
-          Math.abs(totalY) > 8 &&
+          Math.abs(totalY) > 6 &&
           Math.abs(totalY) > Math.abs(totalX) * 1.05
         ) {
           abortSelectToPan()
@@ -994,6 +1105,91 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const renderer = viewRef.current?.renderer as { render?: () => void } | undefined
       renderer?.render?.()
     },
+    scrollChapterTo: (fraction) => {
+      const renderer = viewRef.current?.renderer as {
+        start?: number
+        size?: number
+        viewSize?: number
+        pan?: (dx: number, dy: number) => void
+      } | undefined
+      if (!renderer?.pan) return
+      const vis = renderer.size || 1
+      const content = renderer.viewSize || 1
+      const maxScroll = Math.max(0, content - vis)
+      const target = Math.min(maxScroll, Math.max(0, fraction * maxScroll))
+      renderer.pan(0, target - (renderer.start ?? 0))
+    },
+    goToBookmark: async (target, quote) => {
+      const view = viewRef.current
+      if (!view || !target) return
+      const renderer = view.renderer as {
+        scrollToAnchor?: (anchor: Range | Element | number) => Promise<void>
+        getContents: () => Array<{ doc?: Document; index: number }>
+      }
+
+      const pinToTarget = async () => {
+        const resolved = view.resolveNavigation(target) as
+          | { index?: number; anchor?: (doc: Document) => Range | Element | number }
+          | undefined
+        if (!resolved || typeof resolved.anchor !== 'function') return false
+        const part =
+          renderer.getContents().find((c) => c.index === resolved.index) ?? renderer.getContents()[0]
+        const doc = part?.doc
+        if (!doc) return false
+        let frag: Range | Element | number
+        try {
+          frag = resolved.anchor(doc)
+        } catch {
+          return false
+        }
+        if (frag instanceof Range || (frag instanceof Element && frag.nodeType === 1)) {
+          await renderer.scrollToAnchor?.(frag)
+          flashArrived(frag instanceof Range ? frag : frag)
+          return true
+        }
+        if (typeof frag === 'number') {
+          await renderer.scrollToAnchor?.(frag)
+          return true
+        }
+        return false
+      }
+
+      let went = false
+      try {
+        await view.goTo(target)
+        went = true
+      } catch {
+        went = false
+      }
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => resolve())
+      })
+      const pinned = await pinToTarget()
+      if (pinned || went) {
+        window.setTimeout(() => {
+          void pinToTarget()
+        }, 220)
+        return
+      }
+      const needle = (quote ?? '').replace(/\s+/g, ' ').trim()
+      if (needle.length < 20) return
+      if (revealQuote(view, needle)) return
+      for (const [index, section] of view.book.sections.entries()) {
+        if (!section.createDocument) continue
+        try {
+          const doc = await section.createDocument()
+          const text = (doc.body?.innerText ?? '').replace(/\s+/g, ' ').trim()
+          if (!quoteLooksLike(text, needle) && !text.includes(needle.slice(0, 32))) continue
+          await view.goTo(index)
+          await new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => resolve())
+          })
+          if (revealQuote(view, needle)) return
+        } catch {
+          /* next section */
+        }
+      }
+    },
     getSelection: () => {
       const view = viewRef.current
       if (!view) return null
@@ -1008,11 +1204,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const view = viewRef.current
       if (!view) return { cfi: '', quote: '' }
       const loc = view.lastLocation
+      const snippet = loc?.range?.toString?.()?.replace(/\s+/g, ' ').trim().slice(0, 140)
       if (loc?.cfi) {
-        return { cfi: loc.cfi, quote: loc.tocItem?.label || '' }
+        return { cfi: loc.cfi, quote: snippet || loc.tocItem?.label || '' }
       }
       const part = view.renderer?.getContents()?.[0]
-      if (part) return { cfi: cfiFor(part.index), quote: '' }
+      if (part) return { cfi: cfiFor(part.index), quote: snippet || '' }
       return { cfi: '', quote: '' }
     },
     deselect: () => {
@@ -1092,7 +1289,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const onLoad = (e: Event) => {
       const { doc } = (e as CustomEvent).detail as { doc: Document; index: number }
       doc.addEventListener('selectionchange', () => {
-        if (hidingNative.current.has(doc) || liveSelectDocs.current.has(doc)) return
+        if (hidingNative.current.has(doc) || liveSelectDocs.current.has(doc) || ignoreSelRef.current) return
+        if (scrollPanRef.current.active) return
         const sel = doc.getSelection()
         if (!sel || sel.isCollapsed) {
           if (savedRanges.current.has(doc)) return
@@ -1126,6 +1324,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         scrolled?: boolean
         start?: number
         viewSize?: number
+        size?: number
         page?: number
         pages?: number
       }
@@ -1134,8 +1333,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       let page = 1
       let pages = 1
       if (scrolled) {
-        const size = renderer.viewSize || 1
-        sectionFraction = Math.min(1, Math.max(0, (renderer.start ?? 0) / size))
+        sectionFraction = chapterReadFraction(renderer.start ?? 0, renderer.viewSize || 1, renderer.size || 1)
       } else if (renderer) {
         const textPages = Math.max(1, (renderer.pages ?? 3) - 2)
         page = Math.min(textPages, Math.max(1, (renderer.page ?? 1) - 1))
@@ -1166,13 +1364,13 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       const rec = annotationsRef.current.find((a) => a.cfiRange === annotation.value)
       if (!rec) return
-      if (rec.style === 'textColor' || rec.style === 'bold' || rec.style === 'italic') {
+      applyTextHighlight(doc, range, rec)
+      if (isInlineMark(rec.style)) {
         draw(Overlayer.highlight, { color: 'rgba(0,0,0,0)' })
       } else {
         const [fn, opts] = drawAnnotation(rec.style, rec.color)
         draw(fn, opts)
       }
-      applyTextHighlight(doc, range, rec)
     }
 
     const onShow = (e: Event) => {
@@ -1217,6 +1415,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       try {
         await view.open(file)
         if (cancelled) return
+        installCfiIgnore(view)
         const book = view.book
         book.transformTarget?.addEventListener('data', (ev) => {
           const detail = (ev as CustomEvent).detail as { data: Promise<unknown>; name?: string }
@@ -1302,15 +1501,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const view = viewRef.current
     if (!view) return
     const prev = prevAnnRef.current
-    const nextKeys = new Set(annotations.map((a) => a.cfiRange))
+    const nextById = new Map(annotations.map((a) => [a.id, a]))
     for (const rec of prev) {
-      if (nextKeys.has(rec.cfiRange)) continue
+      const next = nextById.get(rec.id)
+      const gone = !next
+      const moved = Boolean(next && next.cfiRange !== rec.cfiRange)
+      const styleChanged = Boolean(next && next.style !== rec.style)
+      const colorChanged = Boolean(next && next.color !== rec.color)
+      if (!gone && !moved && !styleChanged && !colorChanged) continue
       void Promise.resolve(view.deleteAnnotation({ value: rec.cfiRange })).catch(() => undefined)
-      if (view.renderer) {
-        for (const { doc } of view.renderer.getContents()) {
-          if (doc) unwrapAnnSpans(doc, rec.id)
-          const highlights = doc?.defaultView?.CSS?.highlights
-          highlights?.delete(`ann-${rec.id}`)
+      if (gone || moved || styleChanged) {
+        if (view.renderer) {
+          for (const { doc } of view.renderer.getContents()) {
+            if (doc) unwrapAnnSpans(doc, rec.id)
+          }
         }
       }
     }
@@ -1369,6 +1573,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     let lastW = 0
     let lastH = 0
     const ro = new ResizeObserver(() => {
+      if (scrollPanRef.current.active || scrollPanRef.current.raf) return
       const rect = host.getBoundingClientRect()
       if (Math.abs(rect.width - lastW) < 1 && Math.abs(rect.height - lastH) < 1) return
       lastW = rect.width
