@@ -4,9 +4,9 @@ Keep these three version numbers the same before you tag a build:
 
 | Place | Field | Example |
 | --- | --- | --- |
-| `package.json` | `version` | `3.1.8` |
-| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `3.1.8` / `16` |
-| `android/app/build.gradle` | `versionName` / `versionCode` | `3.1.8` / `16` |
+| `package.json` | `version` | `3.1.9` |
+| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `3.1.9` / `17` |
+| `android/app/build.gradle` | `versionName` / `versionCode` | `3.1.9` / `17` |
 
 `versionCode` must **increase** on every APK you ship (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app. Do not change `applicationId` (`com.epubreader.app`) or the Dexie database name (`epub-reader`), or users will get a second install and an empty library.
 
@@ -27,12 +27,12 @@ Do not change the Android **application id**.
 5. Tag and push:
 
 ```bash
-git tag v3.1.8
+git tag v3.1.9
 git push origin main --tags
 ```
 
-6. GitHub Actions **LoreGuard APK** runs tests, builds, syncs Capacitor, and uploads the **LoreGuard** artifact.
-7. A tag matching `v*` creates a GitHub Release named **LoreGuard v…** with `LoreGuard.apk`.
+6. GitHub Actions **LoreGuard APK** runs tests, builds, syncs Capacitor, and uploads the **LoreGuard** artifact. Pushing `main` only stores that artifact on the workflow run.
+7. A tag matching `v*` creates a GitHub Release named **LoreGuard v…** with `LoreGuard.apk`. Without the tag, phones installing from **Releases** still get the previous version.
 
 ## What not to commit
 

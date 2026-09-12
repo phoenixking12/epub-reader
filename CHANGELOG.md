@@ -2,6 +2,21 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.9 — 2026-09-13
+
+### Added
+
+- Library shelf with one spine per uploaded book, plus a short opening animation
+- Book and chapter progress scrubber (chapter rail in scroll mode)
+
+### Fixed
+
+- Bookmark list jumps to the saved CFI instead of a nearby quote
+- Font-color marks select as a group, can be recolored, and have Remove
+- Reading menu no longer lists Color or Bookmark this page; Bookmark is on the bar
+- Chapter read percent uses leftover scroll, not raw offset / chapter height
+- Press-then-scroll jitter in the reader
+
 ## 3.1.8 — 2026-09-12
 
 ### Fixed
