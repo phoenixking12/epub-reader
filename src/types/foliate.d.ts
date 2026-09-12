@@ -160,6 +160,7 @@ interface FoliateRenderer extends HTMLElement {
   scrolled?: boolean
   start?: number
   viewSize?: number
+  size?: number
   page?: number
   pages?: number
 }

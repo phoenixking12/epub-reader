@@ -19,6 +19,17 @@ export function chapterReadFraction(start: number, viewSize: number, viewport: n
   return clamp01(start / (content - vis))
 }
 
+/** Book-level progress from a section’s start marks and how far the current section has been read. */
+export function bookReadFraction(sectionFractions: number[], sectionIndex: number, fractionInSection: number) {
+  const marks = sectionFractions
+  if (!marks.length) return clamp01(fractionInSection)
+  const last = Math.max(0, marks.length - 2)
+  const i = Math.min(Math.max(0, sectionIndex), last)
+  const a = marks[i] ?? 0
+  const b = marks[i + 1] ?? 1
+  return clamp01(a + (b - a) * clamp01(fractionInSection))
+}
+
 export function formatCornerProgress(progress: ReaderProgress): { primary: string; secondary: string } {
   const bookPct = Math.round(clamp01(progress.bookFraction) * 100)
   const chapterPct = Math.round(clamp01(progress.chapterFraction) * 100)

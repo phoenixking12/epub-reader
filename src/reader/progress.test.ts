@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { chapterReadFraction, formatCornerProgress, quoteLooksLike } from './progress'
+import { bookReadFraction, chapterReadFraction, formatCornerProgress, quoteLooksLike } from './progress'
 
 describe('formatCornerProgress', () => {
   it('shows book and chapter percent while scrolling', () => {
@@ -28,6 +28,13 @@ describe('chapterReadFraction', () => {
 
   it('is 1 when the chapter fits on one screen', () => {
     expect(chapterReadFraction(0, 400, 800)).toBe(1)
+  })
+})
+
+describe('bookReadFraction', () => {
+  it('walks the current section instead of jumping to the next chapter mark', () => {
+    expect(bookReadFraction([0, 0.4, 1], 0, 0.5)).toBeCloseTo(0.2)
+    expect(bookReadFraction([0, 0.4, 1], 1, 0.25)).toBeCloseTo(0.55)
   })
 })
 

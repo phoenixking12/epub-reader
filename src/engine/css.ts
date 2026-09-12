@@ -128,8 +128,8 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     span[data-lg-ann][data-lg-kind="textColor"] {
       -webkit-box-decoration-break: clone;
       box-decoration-break: clone;
-      border-radius: 2px;
-      background-color: color-mix(in srgb, currentColor 18%, transparent);
+      background-color: transparent !important;
+      background-image: none !important;
     }
     span[data-lg-ann][data-lg-kind="bold"],
     span[data-lg-ann][data-lg-kind="italic"] {

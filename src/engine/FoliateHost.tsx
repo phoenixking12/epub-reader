@@ -10,7 +10,7 @@ import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
-import { chapterReadFraction, quoteLooksLike } from '../reader/progress'
+import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
 import { usesPublisherFont } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 
@@ -789,6 +789,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       panning: false,
       fromTouch: false,
       handle: null as 'start' | 'end' | null,
+      armed: false,
       anchorNode: null as Node | null,
       anchorOffset: 0,
       emitRaf: 0,
@@ -834,6 +835,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.t = Date.now()
         state.fromTouch = true
         state.panning = false
+        state.armed = false
         if (isScrollMode()) stopFling()
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
@@ -864,21 +866,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.handle = null
         state.anchorNode = null
         state.timer = window.setTimeout(() => {
-          if (state.panning) return
-          if (selectWordAt(doc, state.x, state.y)) {
-            state.selecting = true
-            const sel = doc.getSelection()
-            if (sel?.rangeCount) {
-              const range = sel.getRangeAt(0)
-              state.anchorNode = range.startContainer
-              state.anchorOffset = range.startOffset
-            }
-            doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
-            clearSelHighlight(doc)
-            doc.documentElement.classList.remove('lg-custom-sel')
-            emitDocSelection(doc, undefined, 'live')
-            navigator.vibrate?.(12)
-          }
+          if (state.panning || state.handle) return
+          state.armed = true
+          navigator.vibrate?.(12)
         }, 480)
       },
       { capture: true, passive: false },
@@ -900,13 +890,19 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           state.lastY = t.clientY
           return
         }
-        if (moved > 8) window.clearTimeout(state.timer)
-        if (scrollMode && (state.panning || (moved > 12 && Math.abs(totalY) > Math.abs(totalX) * 0.7))) {
-          if (!state.panning) beginChapterPan(t.clientY, e.timeStamp)
-          state.panning = true
+        if (moved > 8) {
+          window.clearTimeout(state.timer)
+          state.armed = false
+        }
+        if (scrollMode) {
           e.preventDefault()
           e.stopPropagation()
-          moveChapterPan(t.clientY, e.timeStamp)
+          if (state.panning || (moved > 4 && Math.abs(totalY) > Math.abs(totalX) * 0.55)) {
+            if (!state.panning) beginChapterPan(t.clientY, e.timeStamp)
+            state.panning = true
+            state.armed = false
+            moveChapterPan(t.clientY, e.timeStamp)
+          }
           state.lastX = t.clientX
           state.lastY = t.clientY
         }
@@ -924,13 +920,31 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.selecting = false
         state.handle = null
         state.panning = false
+        state.armed = false
         return
       }
       if (state.panning) {
         state.panning = false
         state.selecting = false
         state.handle = null
+        state.armed = false
         flingChapter()
+        return
+      }
+      if (state.armed) {
+        state.armed = false
+        if (selectWordAt(doc, state.x, state.y)) {
+          const sel = doc.getSelection()
+          if (sel?.rangeCount) {
+            const range = sel.getRangeAt(0)
+            state.anchorNode = range.startContainer
+            state.anchorOffset = range.startOffset
+          }
+          doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
+          clearSelHighlight(doc)
+          doc.documentElement.classList.remove('lg-custom-sel')
+          emitDocSelection(doc)
+        }
         return
       }
       if (
@@ -959,6 +973,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       state.selecting = false
       state.handle = null
       state.panning = false
+      state.armed = false
     }
     doc.addEventListener('touchend', endSelect, { capture: true })
     doc.addEventListener('touchcancel', endSelect, { capture: true })
@@ -1293,40 +1308,56 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       bindTextSelection(doc)
     }
 
+    const readProgress = (detail?: { cfi?: string; fraction?: number; tocItem?: { label?: string } }): RelocateInfo => {
+      const renderer = view.renderer
+      const scrolled = Boolean(renderer?.scrolled)
+      let sectionFraction = 0
+      let page = 1
+      let pages = 1
+      let fraction = detail?.fraction ?? view.lastLocation?.fraction ?? 0
+      if (scrolled) {
+        const start = renderer.start ?? 0
+        const viewSize = renderer.viewSize || 1
+        sectionFraction = chapterReadFraction(start, viewSize, renderer.size || 1)
+        const marks = view.getSectionFractions()
+        const idx = view.lastLocation?.section?.current ?? 0
+        fraction = bookReadFraction(marks, idx, start / Math.max(1, viewSize))
+      } else if (renderer) {
+        const textPages = Math.max(1, (renderer.pages ?? 3) - 2)
+        page = Math.min(textPages, Math.max(1, (renderer.page ?? 1) - 1))
+        pages = textPages
+        sectionFraction = pages > 1 ? (page - 1) / (pages - 1) : 1
+        if (detail?.fraction != null) fraction = detail.fraction
+      }
+      return {
+        cfi: detail?.cfi ?? view.lastLocation?.cfi ?? '',
+        fraction,
+        sectionFraction,
+        locLabel: detail?.tocItem?.label || view.lastLocation?.tocItem?.label || '',
+        page,
+        pages,
+        scrolled,
+      }
+    }
+
     const onRelocateEv = (e: Event) => {
       const d = (e as CustomEvent).detail as {
         cfi?: string
         fraction?: number
         tocItem?: { label?: string }
       }
-      const renderer = view.renderer as HTMLElement & {
-        scrolled?: boolean
-        start?: number
-        viewSize?: number
-        size?: number
-        page?: number
-        pages?: number
-      }
-      const scrolled = Boolean(renderer?.scrolled)
-      let sectionFraction = 0
-      let page = 1
-      let pages = 1
-      if (scrolled) {
-        sectionFraction = chapterReadFraction(renderer.start ?? 0, renderer.viewSize || 1, renderer.size || 1)
-      } else if (renderer) {
-        const textPages = Math.max(1, (renderer.pages ?? 3) - 2)
-        page = Math.min(textPages, Math.max(1, (renderer.page ?? 1) - 1))
-        pages = textPages
-        sectionFraction = pages > 1 ? (page - 1) / (pages - 1) : 1
-      }
-      onRelocateRef.current({
-        cfi: d.cfi ?? '',
-        fraction: d.fraction ?? 0,
-        sectionFraction,
-        locLabel: d.tocItem?.label || '',
-        page,
-        pages,
-        scrolled,
+      const info = readProgress(d)
+      if (d.fraction != null) info.fraction = d.fraction
+      onRelocateRef.current(info)
+    }
+
+    let progressRaf = 0
+    const onRendererScroll = () => {
+      if (!view.renderer?.scrolled) return
+      if (progressRaf) return
+      progressRaf = requestAnimationFrame(() => {
+        progressRaf = 0
+        onRelocateRef.current(readProgress())
       })
     }
 
@@ -1394,6 +1425,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       try {
         await view.open(file)
         if (cancelled) return
+        view.renderer?.addEventListener('scroll', onRendererScroll)
         installCfiIgnore(view)
         const book = view.book
         book.transformTarget?.addEventListener('data', (ev) => {
@@ -1425,6 +1457,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     return () => {
       cancelled = true
+      if (progressRaf) cancelAnimationFrame(progressRaf)
+      view.renderer?.removeEventListener('scroll', onRendererScroll)
       view.removeEventListener('load', onLoad)
       view.removeEventListener('relocate', onRelocateEv)
       view.removeEventListener('create-overlay', onCreateOverlay)

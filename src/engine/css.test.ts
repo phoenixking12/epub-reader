@@ -19,9 +19,11 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/\.lg-pmark \{[\s\S]*width: 28px/)
   })
 
-  it('groups font-color marks as a tinted span', () => {
+  it('recolors font-color marks without a highlight wash', () => {
     expect(css).toMatch(/data-lg-kind="textColor"/)
     expect(css).toMatch(/box-decoration-break: clone/)
+    expect(css).toMatch(/data-lg-kind="textColor"[\s\S]{0,180}background-color: transparent/)
+    expect(css).not.toMatch(/data-lg-kind="textColor"[\s\S]{0,180}background-color: color-mix/)
   })
 
   it('keeps arrived and selection-handle rules valid', () => {
