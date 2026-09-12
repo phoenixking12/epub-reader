@@ -2,6 +2,20 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.0.1 — 2026-09-13
+
+Same Android id as 4.0.0 (`com.loreguard.app`). This APK replaces 4.0.0 and keeps the library.
+
+### Added
+
+- Library bookcase with leather/cloth spines, gold bands, and a brass LoreGuard plate
+
+### Fixed
+
+- Press-then-scroll no longer selects a word mid-drag and jitters against native pan
+- Font color recolours letters only; it no longer paints a highlight wash
+- Book and chapter percent update while you scroll, not in 250ms blocks
+
 ## 4.0.0 — 2026-09-13
 
 LoreGuard’s identity cutover. Uninstall 3.x (`com.epubreader.app`) before installing this APK.
