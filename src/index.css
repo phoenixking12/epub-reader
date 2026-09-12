@@ -304,6 +304,9 @@ select option { background: #1c1917; color: #fafaf9; }
   inset: 0;
   top: var(--lg-sat);
   bottom: var(--lg-sab);
+  padding-left: var(--lg-side, 0px);
+  padding-right: var(--lg-side, 0px);
+  box-sizing: border-box;
   touch-action: pan-x pan-y;
 }
 .reader.scroll-mode .foliate-host {

@@ -184,7 +184,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
             </label>
           )}
           <label className="field">
-            Top &amp; bottom {settings.margin}px
+            Side margin {settings.margin}px
             <input
               type="range"
               min={0}

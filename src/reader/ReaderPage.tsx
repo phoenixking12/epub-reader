@@ -73,7 +73,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
 
   const colors = themeColors(display)
   const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
-  const showChrome = chrome && !overlayOpen && !selection
+  const showChrome = chrome && !overlayOpen
   const pageButtons = display.pageTurnMode === 'buttons'
   const autoBright = display.brightnessMode !== 'manual'
   const corner = formatCornerProgress({
@@ -245,10 +245,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         }}
         onSelection={(sel) => {
           setSelection(sel)
-          if (sel) {
-            setChrome(false)
-            setMenuOpen(false)
-          }
+          if (sel) setMenuOpen(false)
         }}
         onParagraphTap={(info) => {
           setSelection(null)
@@ -475,7 +472,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
             })
             host.current?.deselect()
             setSelection(null)
-            setChrome(true)
           })()
         }}
         onNote={() => {
@@ -517,14 +513,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
                 void db.annotations.delete(selectedAnn.id)
                 host.current?.deselect()
                 setSelection(null)
-                setChrome(true)
               }
             : undefined
         }
         onClose={() => {
           host.current?.deselect()
           setSelection(null)
-          setChrome(true)
         }}
       />
 

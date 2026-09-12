@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildReaderCSS } from './css'
+import { applyRendererLayout, buildReaderCSS } from './css'
 import { DEFAULT_DISPLAY } from '../settings/defaults'
 
 describe('buildReaderCSS', () => {
@@ -33,5 +33,21 @@ describe('buildReaderCSS', () => {
   it('allows text selection so long-press can highlight a word', () => {
     expect(css).toMatch(/user-select: text/)
     expect(css).not.toMatch(/user-select: none/)
+  })
+})
+
+describe('applyRendererLayout', () => {
+  it('does not add extra page chrome so only the system bars inset the page', () => {
+    const el = document.createElement('div')
+    applyRendererLayout(el, { ...DEFAULT_DISPLAY, margin: 36 })
+    expect(el.getAttribute('margin')).toBe('0px')
+    expect(el.getAttribute('flow')).toBe('paginated')
+  })
+
+  it('still uses scroll flow when page-turn is scroll', () => {
+    const el = document.createElement('div')
+    applyRendererLayout(el, { ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
+    expect(el.getAttribute('flow')).toBe('scrolled')
+    expect(el.getAttribute('margin')).toBe('0px')
   })
 })
