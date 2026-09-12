@@ -2,6 +2,16 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 3.1.7 — 2026-09-12
+
+### Fixed
+
+- Reading text fills the screen below the Android status bar and above the navigation bar
+- Double-tap still opens the reading bar, and the page reflows so the bar no longer covers lines
+- Default page gap/margins are tighter so unused gutter is gone
+- Chapter scroll follows the finger more quickly and coasts farther
+- Bookmark, note, and search fields rise above the keyboard instead of hiding under it
+
 ## 3.1.6 — 2026-09-10
 
 ### Fixed

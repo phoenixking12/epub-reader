@@ -18,12 +18,16 @@ describe('migrateDisplay', () => {
     expect(next.flow).toBe('paginated')
   })
 
-  it('narrows the old 24px side gutter so text can run nearer the edge', () => {
-    expect(migrateDisplay({ margin: 24 }).margin).toBe(8)
+  it('narrows the old 24px and 8px gutters so text can fill the screen', () => {
+    expect(migrateDisplay({ margin: 24 }).margin).toBe(4)
+    expect(migrateDisplay({ margin: 8 }).margin).toBe(4)
+    expect(migrateDisplay({ gap: 7 }).gap).toBe(2)
+    expect(migrateDisplay({ maxInlineSize: 720 }).maxInlineSize).toBe(1200)
   })
 
   it('keeps a custom side margin', () => {
     expect(migrateDisplay({ ...DEFAULT_DISPLAY, margin: 36 }).margin).toBe(36)
+    expect(migrateDisplay({ ...DEFAULT_DISPLAY, gap: 9 }).gap).toBe(9)
   })
 
   it('uses the book typeface by default and keeps a chosen face', () => {

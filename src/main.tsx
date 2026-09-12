@@ -16,6 +16,9 @@ import '@fontsource/ibm-plex-sans/700.css'
 import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/700.css'
 import './index.css'
+import { bindSystemInsets } from './native/insets'
+
+void bindSystemInsets()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

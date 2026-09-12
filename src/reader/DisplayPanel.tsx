@@ -184,7 +184,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
             </label>
           )}
           <label className="field">
-            Side margin {settings.margin}px
+            Top &amp; bottom {settings.margin}px
             <input
               type="range"
               min={0}
@@ -195,11 +195,22 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
             />
           </label>
           <label className="field">
+            Side gap {settings.gap}%
+            <input
+              type="range"
+              min={0}
+              max={12}
+              step={1}
+              value={settings.gap}
+              onChange={(e) => onChange({ gap: Number(e.target.value) })}
+            />
+          </label>
+          <label className="field">
             Line length {settings.maxInlineSize}px
             <input
               type="range"
               min={280}
-              max={900}
+              max={1400}
               step={10}
               value={settings.maxInlineSize}
               onChange={(e) => onChange({ maxInlineSize: Number(e.target.value) })}

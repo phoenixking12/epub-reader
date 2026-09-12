@@ -17,9 +17,9 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   fontFamily: 'publisher',
   fontSize: 18,
   lineHeight: 1.55,
-  margin: 8,
-  maxInlineSize: 720,
-  gap: 7,
+  margin: 4,
+  maxInlineSize: 1200,
+  gap: 2,
   justify: true,
   hyphenate: true,
   flow: 'paginated',
@@ -93,7 +93,11 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   const merged = { ...DEFAULT_DISPLAY, ...display }
   const pageTurnMode: PageTurnMode =
     display?.pageTurnMode ?? (display?.flow === 'scrolled' ? 'scroll' : DEFAULT_DISPLAY.pageTurnMode)
-  const margin = display?.margin === 24 || display?.margin == null ? 8 : merged.margin
+  const margin =
+    display?.margin == null || display.margin === 24 || display.margin === 8 ? 4 : merged.margin
+  const gap = display?.gap == null || display.gap === 7 ? 2 : merged.gap
+  const maxInlineSize =
+    display?.maxInlineSize == null || display.maxInlineSize === 720 ? 1200 : merged.maxInlineSize
   const savedFamily = display?.fontFamily
   const keepCustomFont =
     Boolean(savedFamily) &&
@@ -103,6 +107,8 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   return {
     ...merged,
     margin,
+    gap,
+    maxInlineSize,
     fontFamily,
     pageTurnMode,
     flow: flowForPageTurn(pageTurnMode),

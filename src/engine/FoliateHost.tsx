@@ -61,6 +61,7 @@ export interface FoliateHandle {
   goTo: (target: string | number) => Promise<void>
   goToFraction: (n: number) => Promise<void>
   applySettings: (settings: DisplaySettings) => void
+  relayout: () => void
   getSelection: () => SelectionInfo | null
   getLocation: () => { cfi: string; quote: string }
   deselect: () => void
@@ -230,25 +231,26 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const s = scrollPanRef.current
     const dt = Math.max(1, time - s.lastT)
     const dy = clientY - s.lastY
-    s.vy = dy / dt
+    const inst = dy / dt
+    s.vy = s.vy * 0.55 + inst * 0.45
     s.lastY = clientY
     s.lastT = time
     s.active = true
-    panChapter(-dy)
+    panChapter(-dy * 1.28)
   }
 
   const flingChapter = () => {
     const s = scrollPanRef.current
-    if (s.active) s.suppressTapUntil = Date.now() + 280
+    if (s.active) s.suppressTapUntil = Date.now() + 220
     s.active = false
-    let vy = s.vy
-    if (Math.abs(vy) < 0.12) return
+    let vy = s.vy * 1.85
+    if (Math.abs(vy) < 0.16) return
     let last = performance.now()
     const step = (now: number) => {
       const dt = Math.min(32, now - last)
       last = now
-      vy *= Math.pow(0.965, dt / 16)
-      if (Math.abs(vy) < 0.04) {
+      vy *= Math.pow(0.988, dt / 16)
+      if (Math.abs(vy) < 0.03) {
         s.raf = 0
         return
       }
@@ -940,7 +942,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         }
         if (isScrollMode()) {
           e.preventDefault()
-          panChapter(e.deltaY)
+          panChapter(e.deltaY * 1.35)
         }
       },
       opts,
@@ -966,6 +968,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!view?.renderer) return
       applyRendererLayout(view.renderer, next)
       view.renderer.setStyles?.(buildReaderCSS(next))
+    },
+    relayout: () => {
+      const renderer = viewRef.current?.renderer as { render?: () => void } | undefined
+      renderer?.render?.()
     },
     getSelection: () => {
       const view = viewRef.current
@@ -1331,7 +1337,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       if (isScrollMode()) {
         e.preventDefault()
-        panChapter(e.deltaY)
+        panChapter(e.deltaY * 1.35)
       }
     }
 
@@ -1339,8 +1345,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     host.addEventListener('touchmove', onTouchMove, { passive: false })
     host.addEventListener('touchend', onTouchEnd)
     host.addEventListener('wheel', onWheel, { passive: false })
+    let lastW = 0
+    let lastH = 0
+    const ro = new ResizeObserver(() => {
+      const rect = host.getBoundingClientRect()
+      if (Math.abs(rect.width - lastW) < 1 && Math.abs(rect.height - lastH) < 1) return
+      lastW = rect.width
+      lastH = rect.height
+      const renderer = viewRef.current?.renderer as { render?: () => void } | undefined
+      renderer?.render?.()
+    })
+    ro.observe(host)
     return () => {
       stopFling()
+      ro.disconnect()
       host.removeEventListener('touchstart', onTouchStart)
       host.removeEventListener('touchmove', onTouchMove)
       host.removeEventListener('touchend', onTouchEnd)

@@ -94,12 +94,17 @@ export function ReaderPage({ bookId, onBack }: Props) {
     }
     const el = topRef.current
     if (!el) return
-    const apply = () => setChromeH(el.getBoundingClientRect().height)
+    const apply = () => setChromeH(Math.ceil(el.getBoundingClientRect().height))
     apply()
     const ro = new ResizeObserver(apply)
     ro.observe(el)
     return () => ro.disconnect()
   }, [showChrome, pageButtons, book?.title, loc])
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => host.current?.relayout())
+    return () => window.cancelAnimationFrame(id)
+  }, [showChrome, chromeH])
 
   useEffect(() => {
     if (!settingsRow?.display) return
@@ -206,7 +211,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
   return (
     <div
       className={`reader ${showChrome ? 'chrome-on' : ''} ${display.pageTurnMode === 'scroll' ? 'scroll-mode' : ''}`}
-      style={{ background: colors.bg, ['--chrome-h' as string]: `${chromeH}px` }}
+      style={{
+        background: colors.bg,
+        ...(showChrome && chromeH > 0 ? { ['--chrome-h' as string]: `${chromeH}px` } : {}),
+      }}
     >
       <FoliateHost
         ref={host}

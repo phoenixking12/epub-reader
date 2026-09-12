@@ -1,16 +1,19 @@
 import { App } from '@capacitor/app'
 import { StatusBar, Style } from '@capacitor/status-bar'
+import { bindSystemInsets } from './insets'
 import { isNative } from './platform'
 
 export async function initNativeShell(): Promise<void> {
-  if (!isNative()) return
-  try {
-    await StatusBar.setStyle({ style: Style.Dark })
-    await StatusBar.setBackgroundColor({ color: '#1c1917' })
-    await StatusBar.setOverlaysWebView({ overlay: true })
-  } catch {
-    /* ignore */
+  if (isNative()) {
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: true })
+      await StatusBar.setBackgroundColor({ color: '#00000000' })
+      await StatusBar.setStyle({ style: Style.Dark })
+    } catch {
+      /* ignore */
+    }
   }
+  await bindSystemInsets()
 }
 
 export function listenForBookOpen(onOpen: (bookId: string) => void, onFileUrl?: (url: string) => void) {

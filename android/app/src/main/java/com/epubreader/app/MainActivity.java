@@ -19,17 +19,22 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 
 public class MainActivity extends BridgeActivity {
+    private boolean insetListenerBound;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(IncomingEpubPlugin.class);
         registerPlugin(VolumeKeysPlugin.class);
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.parseColor("#1c1917"));
-        getWindow().setNavigationBarColor(Color.parseColor("#1c1917"));
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
         View content = findViewById(android.R.id.content);
         if (content != null) {
             content.setBackgroundColor(Color.parseColor("#1c1917"));
             content.post(this::applySystemBarInsets);
+            content.postDelayed(this::applySystemBarInsets, 250);
+            content.postDelayed(this::applySystemBarInsets, 1000);
         } else {
             applySystemBarInsets();
         }
@@ -42,10 +47,15 @@ public class MainActivity extends BridgeActivity {
         WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), webView);
         bars.setAppearanceLightStatusBars(false);
         bars.setAppearanceLightNavigationBars(false);
+        if (insetListenerBound) {
+            ViewCompat.requestApplyInsets(webView);
+            return;
+        }
+        insetListenerBound = true;
         ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
-            Insets status = insets.getInsets(
-                    WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout());
-            Insets nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            Insets sys = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
             ViewGroup.LayoutParams raw = v.getLayoutParams();
             if (raw instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
@@ -56,12 +66,19 @@ public class MainActivity extends BridgeActivity {
                 v.setLayoutParams(lp);
             }
             v.setPadding(0, 0, 0, 0);
+            float density = Math.max(0.5f, v.getResources().getDisplayMetrics().density);
+            int sat = Math.round(sys.top / density);
+            int sab = Math.round(sys.bottom / density);
+            int keyboard = Math.max(0, Math.round(ime.bottom / density));
             String js =
                     "document.documentElement.style.setProperty('--lg-sat','"
-                            + status.top
+                            + sat
                             + "px');"
                             + "document.documentElement.style.setProperty('--lg-sab','"
-                            + nav.bottom
+                            + sab
+                            + "px');"
+                            + "document.documentElement.style.setProperty('--lg-keyboard','"
+                            + keyboard
                             + "px');";
             if (v instanceof WebView) {
                 ((WebView) v).evaluateJavascript(js, null);
