@@ -35,4 +35,9 @@ describe('migrateDisplay', () => {
     expect(migrateDisplay({ fontFamily: '"Source Serif 4", Georgia, serif' }).fontFamily).toBe('publisher')
     expect(migrateDisplay({ fontFamily: 'Literata, Georgia, serif' }).fontFamily).toBe('Literata, Georgia, serif')
   })
+
+  it('keeps the progress slider off unless the reader turned it on', () => {
+    expect(migrateDisplay({}).progressSlider).toBe(false)
+    expect(migrateDisplay({ progressSlider: true }).progressSlider).toBe(true)
+  })
 })

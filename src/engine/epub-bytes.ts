@@ -38,7 +38,7 @@ export function buildMinimalEpub(opts?: {
     'OEBPS/content.opf': strToU8(`<?xml version="1.0"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bid" version="3.0">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="bid">urn:epub-reader:sample</dc:identifier>
+    <dc:identifier id="bid">urn:loreguard:sample</dc:identifier>
     <dc:title>${title}</dc:title>
     <dc:creator>${author}</dc:creator>
     <dc:language>en</dc:language>

@@ -24,6 +24,11 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/box-decoration-break: clone/)
   })
 
+  it('keeps arrived and selection-handle rules valid', () => {
+    expect(css).toMatch(/\.lg-arrived \{/)
+    expect(css).toMatch(/\.lg-sel-handle \{/)
+  })
+
   it('disables native iframe pan in scroll mode so chapter pan can run', () => {
     const scrolled = buildReaderCSS({ ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
     expect(scrolled).toMatch(/touch-action: none/)

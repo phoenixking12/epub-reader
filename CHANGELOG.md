@@ -2,6 +2,22 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.0.0 — 2026-09-13
+
+LoreGuard’s identity cutover. Uninstall 3.x (`com.epubreader.app`) before installing this APK.
+
+### Changed
+
+- Android id is `com.loreguard.app`; library database is `loreguard`; shortcuts use `loreguard://book/…`
+- Percent read sits at the bottom like a page number; **Display → Progress slider** is a separate horizontal jump bar
+
+### Fixed
+
+- Press-then-scroll no longer flashes a selection, then jitters
+- Long-press then drag (or the orange blips) extends past one word
+- Orange strip on the right edge is gone
+- Font-color marks still select as a group
+
 ## 3.1.9 — 2026-09-13
 
 ### Added

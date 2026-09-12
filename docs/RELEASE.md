@@ -4,19 +4,31 @@ Keep these three version numbers the same before you tag a build:
 
 | Place | Field | Example |
 | --- | --- | --- |
-| `package.json` | `version` | `3.1.9` |
-| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `3.1.9` / `17` |
-| `android/app/build.gradle` | `versionName` / `versionCode` | `3.1.9` / `17` |
+| `package.json` | `version` | `4.0.0` |
+| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `4.0.0` / `1` |
+| `android/app/build.gradle` | `versionName` / `versionCode` | `4.0.0` / `1` |
 
-`versionCode` must **increase** on every APK you ship (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app. Do not change `applicationId` (`com.epubreader.app`) or the Dexie database name (`epub-reader`), or users will get a second install and an empty library.
+`versionCode` must **increase** on every APK you ship after 4.0.0 (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app.
 
-The visible name is **LoreGuard** (Android label, GitHub release title, APK artifact). The GitHub repo may still be `epub-reader`; rename it if you want the URL to match:
+## Identity (do not change again)
+
+These names are the LoreGuard identity from 4.0.0 onward. Changing any of them later installs a second app and an empty library:
+
+| Place | Value |
+| --- | --- |
+| Android `applicationId` / Capacitor `appId` | `com.loreguard.app` |
+| Android `namespace` | `com.loreguard.app` |
+| Dexie database | `loreguard` |
+| Home-screen shortcut scheme | `loreguard://book/…` |
+| Visible name / APK | **LoreGuard** |
+
+The GitHub repo may still be `epub-reader`; rename it if you want the URL to match:
 
 ```bash
 gh repo rename LoreGuard
 ```
 
-Do not change the Android **application id**.
+4.0.0 is a **new Android app**. Uninstall any 3.x `com.epubreader.app` build first; books do not carry over.
 
 ## Checklist
 
@@ -27,7 +39,7 @@ Do not change the Android **application id**.
 5. Tag and push:
 
 ```bash
-git tag v3.1.9
+git tag v4.0.0
 git push origin main --tags
 ```
 

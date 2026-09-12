@@ -1,4 +1,4 @@
-package com.epubreader.app;
+package com.loreguard.app;
 
 import android.app.Activity;
 import android.content.ClipData;
@@ -166,7 +166,7 @@ public class IncomingEpubPlugin extends Plugin {
         }
         Intent launch = new Intent(getContext(), MainActivity.class);
         launch.setAction(Intent.ACTION_VIEW);
-        launch.setData(Uri.parse("epubreader://book/" + id));
+        launch.setData(Uri.parse("loreguard://book/" + id));
         ShortcutInfo info = new ShortcutInfo.Builder(getContext(), id)
                 .setShortLabel(title.length() > 12 ? title.substring(0, 12) : title)
                 .setLongLabel(title)

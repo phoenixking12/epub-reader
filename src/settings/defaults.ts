@@ -33,6 +33,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   defaultAnnotationStyle: 'highlight',
   defaultAnnotationColor: '#facc15',
   invertImagesInNight: false,
+  progressSlider: false,
 }
 
 export const THEMES: Record<
@@ -114,6 +115,8 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
     flow: flowForPageTurn(pageTurnMode),
     customHighlightColors: merged.customHighlightColors ?? [],
     brightnessMode: merged.brightnessMode ?? 'auto',
+    invertImagesInNight: merged.invertImagesInNight ?? false,
+    progressSlider: Boolean(merged.progressSlider),
   }
 }
 

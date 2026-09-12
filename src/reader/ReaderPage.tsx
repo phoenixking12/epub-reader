@@ -287,15 +287,13 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onFontSizeChange={(size) => void patchDisplay({ fontSize: size })}
       />
 
-      <ProgressScrub
-        bookFraction={frac}
-        chapterFraction={chapterFrac}
-        primary={corner.primary}
-        secondary={corner.secondary}
-        showChapterRail={display.pageTurnMode === 'scroll' || pageInfo.scrolled}
-        onBookJump={(n) => void host.current?.goToFraction(n)}
-        onChapterJump={(n) => host.current?.scrollChapterTo(n)}
-      />
+      {display.progressSlider ? (
+        <ProgressScrub bookFraction={frac} onBookJump={(n) => void host.current?.goToFraction(n)} />
+      ) : null}
+      <div className="reader-folio" aria-live="polite">
+        <strong>{corner.primary}</strong>
+        {corner.secondary ? <span>{corner.secondary}</span> : null}
+      </div>
 
       <div
         className="brightness-veil"

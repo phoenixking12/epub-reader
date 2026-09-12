@@ -23,7 +23,7 @@ If **Display → Buttons** is on, previous/next page buttons appear as well.
 
 The reading bar sits immediately under the notification icons. The dark bar runs behind the status icons; the buttons sit just below them, with no extra black gap.
 
-The scrubber at the bottom shows **% of book** and **% of chapter** while you scroll, or **chapter page n / N** in page modes. Drag it to jump. In scroll mode, the rail on the right jumps within the chapter.
+The scrubber at the bottom is off unless you turn on **Display → Progress slider**. Percent read always sits at the bottom like a page number: **book %** and **chapter %** while you scroll, or **n / N** in page modes.
 
 ## Turn pages
 
@@ -66,7 +66,7 @@ Highlight color also lives in **Display**.
 | Swipe (in Swipe mode) | Turn the page |
 | Drag vertically (in Scroll mode) | Move through the chapter |
 | Swipe sideways (in Scroll mode) | Previous / next chapter |
-| Long-press then drag handles | Select text; stays selected until you tap away |
+| Long-press, then drag | Select from that word; orange blips appear when you lift |
 | Pinch | Change type size |
 
 ## Backup
@@ -75,4 +75,4 @@ Settings → Backup exports highlights, notes, and bookmarks as JSON. EPUB files
 
 ## Updates
 
-Installs from GitHub use the same Android id (`com.epubreader.app`). A newer **versionCode** replaces the previous LoreGuard on the phone and keeps your library.
+Installs from GitHub use Android id `com.loreguard.app`. After 4.0.0, a newer **versionCode** replaces that LoreGuard and keeps your library. Uninstall any 3.x build first; it was a different app id.

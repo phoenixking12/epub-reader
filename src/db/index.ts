@@ -18,7 +18,7 @@ export class ReaderDB extends Dexie {
   files!: Table<FileRecord, string>
 
   constructor() {
-    super('epub-reader')
+    super('loreguard')
     this.version(1).stores({
       books: 'id, title, lastOpenedAt, pinned, addedAt, *labels',
       bookmarks: 'id, bookId, order, createdAt',

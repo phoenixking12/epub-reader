@@ -19,7 +19,7 @@ export async function initNativeShell(): Promise<void> {
 export function listenForBookOpen(onOpen: (bookId: string) => void, onFileUrl?: (url: string) => void) {
   if (!isNative()) return () => undefined
   const handle = App.addListener('appUrlOpen', ({ url }) => {
-    const bookMatch = url.match(/epubreader:\/\/book\/([^/?#]+)/)
+    const bookMatch = url.match(/loreguard:\/\/book\/([^/?#]+)/)
     if (bookMatch?.[1]) {
       onOpen(decodeURIComponent(bookMatch[1]))
       return

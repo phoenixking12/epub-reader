@@ -136,6 +136,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       -webkit-box-decoration-break: clone;
       box-decoration-break: clone;
     }
+    .lg-arrived {
       outline: 2px solid ${link};
       outline-offset: 3px;
       border-radius: 2px;

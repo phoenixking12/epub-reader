@@ -28,7 +28,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="epubreader" android:host="book" />
+                <data android:scheme="loreguard" android:host="book" />
             </intent-filter>
 
             <intent-filter>

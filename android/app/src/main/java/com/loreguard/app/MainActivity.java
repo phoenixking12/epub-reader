@@ -1,4 +1,4 @@
-package com.epubreader.app;
+package com.loreguard.app;
 
 import android.graphics.Color;
 import android.os.Bundle;

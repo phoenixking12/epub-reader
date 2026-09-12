@@ -1,4 +1,4 @@
-package com.epubreader.app;
+package com.loreguard.app;
 
 import android.view.KeyEvent;
 

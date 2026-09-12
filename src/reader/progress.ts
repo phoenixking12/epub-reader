@@ -24,15 +24,15 @@ export function formatCornerProgress(progress: ReaderProgress): { primary: strin
   const chapterPct = Math.round(clamp01(progress.chapterFraction) * 100)
   if (progress.scrolled) {
     return {
-      primary: `${bookPct}% of book`,
-      secondary: `${chapterPct}% of chapter`,
+      primary: `${bookPct}%`,
+      secondary: `${chapterPct}%`,
     }
   }
   const pages = Math.max(1, progress.pages)
   const page = Math.min(pages, Math.max(1, progress.page))
   return {
     primary: `${page} / ${pages}`,
-    secondary: `${bookPct}% of book`,
+    secondary: `${bookPct}%`,
   }
 }
 

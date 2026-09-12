@@ -1,7 +1,7 @@
 {
-  "name": "epub-reader",
+  "name": "loreguard",
   "private": true,
-  "version": "3.1.9",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

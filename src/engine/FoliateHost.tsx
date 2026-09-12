@@ -756,7 +756,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
     liveSelectDocs.current.delete(doc)
     const box = rangeBox(range)
-    paintSelHighlight(doc, range)
+    const painted = paintSelHighlight(doc, range)
     const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
       let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
       if (!el) {
@@ -771,7 +771,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     placeHandle('start', box.start.left, box.start.top - 14)
     placeHandle('end', box.end.right, box.end.bottom - 30)
     onSelectionRef.current(info)
-    hideNativeSelection(doc)
+    if (painted) hideNativeSelection(doc)
   }
 
   const bindTextSelection = (doc: Document) => {
@@ -800,21 +800,21 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         emitDocSelection(doc, undefined, 'live')
       })
     }
-    const abortSelectToPan = () => {
-      ignoreSelRef.current = true
-      window.clearTimeout(state.timer)
-      state.selecting = false
-      state.handle = null
-      state.anchorNode = null
-      liveSelectDocs.current.delete(doc)
-      clearHandles(doc)
-      hidingNative.current.add(doc)
-      doc.getSelection()?.removeAllRanges()
-      window.setTimeout(() => {
-        hidingNative.current.delete(doc)
-        ignoreSelRef.current = false
-      }, 80)
-      onSelectionRef.current(null)
+    const stretchTo = (x: number, y: number) => {
+      const point = rangeFromPoint(doc, x, y)
+      const sel = restoreSavedRange(doc) ?? doc.getSelection()
+      if (!point || !sel) return
+      if (!caretIsTextual(point.startContainer)) return
+      if (state.anchorNode) {
+        try {
+          sel.setBaseAndExtent(state.anchorNode, state.anchorOffset, point.startContainer, point.startOffset)
+        } catch {
+          extendSelectionTo(doc, x, y)
+        }
+      } else {
+        extendSelectionTo(doc, x, y)
+      }
+      emitSoon()
     }
     doc.addEventListener(
       'touchstart',
@@ -834,7 +834,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.t = Date.now()
         state.fromTouch = true
         state.panning = false
-        if (isScrollMode()) beginChapterPan(t.clientY, e.timeStamp)
+        if (isScrollMode()) stopFling()
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
         if (handleEl) {
@@ -862,10 +862,17 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         }
         state.selecting = false
         state.handle = null
+        state.anchorNode = null
         state.timer = window.setTimeout(() => {
           if (state.panning) return
           if (selectWordAt(doc, state.x, state.y)) {
             state.selecting = true
+            const sel = doc.getSelection()
+            if (sel?.rangeCount) {
+              const range = sel.getRangeAt(0)
+              state.anchorNode = range.startContainer
+              state.anchorOffset = range.startOffset
+            }
             doc.querySelectorAll('.lg-sel-handle').forEach((n) => n.remove())
             clearSelHighlight(doc)
             doc.documentElement.classList.remove('lg-custom-sel')
@@ -885,52 +892,24 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const totalX = t.clientX - state.x
         const totalY = t.clientY - state.y
         const scrollMode = isScrollMode()
-        if (state.handle && state.anchorNode) {
+        if (state.handle || state.selecting) {
           e.preventDefault()
           e.stopPropagation()
-          const point = rangeFromPoint(doc, t.clientX, t.clientY)
-          const sel = restoreSavedRange(doc) ?? doc.getSelection()
-          if (!point || !sel) return
-          if (!caretIsTextual(point.startContainer)) return
-          try {
-            sel.setBaseAndExtent(state.anchorNode, state.anchorOffset, point.startContainer, point.startOffset)
-          } catch {
-            extendSelectionTo(doc, t.clientX, t.clientY)
-          }
-          emitSoon()
+          stretchTo(t.clientX, t.clientY)
           state.lastX = t.clientX
           state.lastY = t.clientY
           return
         }
-        if (moved > 5) window.clearTimeout(state.timer)
-        if (
-          state.selecting &&
-          !state.handle &&
-          scrollMode &&
-          Math.abs(totalY) > 6 &&
-          Math.abs(totalY) > Math.abs(totalX) * 1.05
-        ) {
-          abortSelectToPan()
+        if (moved > 8) window.clearTimeout(state.timer)
+        if (scrollMode && (state.panning || (moved > 12 && Math.abs(totalY) > Math.abs(totalX) * 0.7))) {
+          if (!state.panning) beginChapterPan(t.clientY, e.timeStamp)
           state.panning = true
-          beginChapterPan(t.clientY, e.timeStamp)
+          e.preventDefault()
+          e.stopPropagation()
+          moveChapterPan(t.clientY, e.timeStamp)
+          state.lastX = t.clientX
+          state.lastY = t.clientY
         }
-        if (!state.selecting) {
-          if (scrollMode && (state.panning || (Math.abs(totalY) > 4 && Math.abs(totalY) > Math.abs(totalX) * 0.7))) {
-            state.panning = true
-            e.preventDefault()
-            e.stopPropagation()
-            moveChapterPan(t.clientY, e.timeStamp)
-            state.lastX = t.clientX
-            state.lastY = t.clientY
-          }
-          return
-        }
-        e.preventDefault()
-        e.stopPropagation()
-        extendSelectionTo(doc, t.clientX, t.clientY)
-        emitSoon()
-        state.lastX = t.clientX
-        state.lastY = t.clientY
       },
       { capture: true, passive: false },
     )

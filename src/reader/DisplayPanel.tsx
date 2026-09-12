@@ -167,6 +167,15 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
             ))}
           </div>
           <p className="muted">{TURN_MODES.find((m) => m.id === settings.pageTurnMode)?.hint}</p>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={settings.progressSlider}
+              onChange={(e) => onChange({ progressSlider: e.target.checked })}
+            />
+            Progress slider
+          </label>
+          <p className="muted">Horizontal bar to jump in the book. Percent read still sits at the bottom like a page number.</p>
           <p className="field-label">Brightness</p>
           <div className="action-row">
             <button

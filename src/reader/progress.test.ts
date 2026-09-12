@@ -4,15 +4,15 @@ import { chapterReadFraction, formatCornerProgress, quoteLooksLike } from './pro
 describe('formatCornerProgress', () => {
   it('shows book and chapter percent while scrolling', () => {
     expect(formatCornerProgress({ bookFraction: 0.42, chapterFraction: 0.18, page: 1, pages: 1, scrolled: true })).toEqual({
-      primary: '42% of book',
-      secondary: '18% of chapter',
+      primary: '42%',
+      secondary: '18%',
     })
   })
 
   it('shows chapter pages in paginated mode', () => {
     expect(formatCornerProgress({ bookFraction: 0.5, chapterFraction: 0.25, page: 3, pages: 12, scrolled: false })).toEqual({
       primary: '3 / 12',
-      secondary: '50% of book',
+      secondary: '50%',
     })
   })
 })
