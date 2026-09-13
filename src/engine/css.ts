@@ -1,4 +1,4 @@
-import { THEMES, flowForPageTurn, usesPublisherFont } from '../settings/defaults'
+import { THEMES, flowForPageTurn, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import type { DisplaySettings } from '../types/models'
 import { collectDocumentFontFaces } from './fontFaces'
 
@@ -20,13 +20,24 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
   const bodyFontSize = publisher ? '' : 'font-size: 1em !important;'
   const htmlFontSize = publisher
-    ? `font-size: ${settings.fontSize}px;`
+    ? settings.fontSize === DEFAULT_DISPLAY.fontSize
+      ? ''
+      : `font-size: ${(settings.fontSize / DEFAULT_DISPLAY.fontSize) * 100}%;`
     : `font-size: ${settings.fontSize}px !important;`
-  const bodyBox = publisher
-    ? ''
-    : 'margin: 0 !important; padding: 0 !important;'
+  const bodyBox = publisher ? '' : 'margin: 0 !important; padding: 0 !important;'
+  const htmlBox = publisher ? '' : 'margin: 0 !important; padding: 0 !important;'
   const touchAction = settings.pageTurnMode === 'scroll' ? 'pan-y' : 'pan-x pan-y'
-  const overscrollY = settings.pageTurnMode === 'scroll' ? 'contain' : 'auto'
+  const themeBang = night ? ' !important' : ''
+  const linkRule = publisher
+    ? `a:link, a:visited { color: ${link}; }`
+    : `a:link, a:visited { color: ${link} !important; }`
+  const imgRule = publisher
+    ? `img, svg, video { max-width: 100%; ${imgFilter} }`
+    : `img, svg, video {
+      max-width: 100% !important;
+      height: auto !important;
+      ${imgFilter}
+    }`
   const readingType = publisher
     ? ''
     : `
@@ -97,35 +108,31 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     @namespace epub "http://www.idpf.org/2007/ops";
     ${faces}
     html {
-      background: ${bg} !important;
-      color: ${fg} !important;
+      background: ${bg}${themeBang};
+      color: ${fg}${themeBang};
       ${htmlFontSize}
       ${fontFamilyCss}
-      ${publisher ? '' : 'margin: 0 !important; padding: 0 !important;'}
+      ${htmlBox}
       min-height: 100%;
-      min-height: 100vh;
       touch-action: ${touchAction};
       -webkit-user-select: none !important;
       user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: ${overscrollY};
       ${writing}
     }
     body {
-      background: transparent !important;
-      color: inherit !important;
+      ${night || !publisher ? 'background: transparent !important;' : ''}
+      ${night || !publisher ? 'color: inherit !important;' : ''}
       ${fontFamilyCss}
       ${bodyFontSize}
       ${bodyBox}
       min-height: 100%;
-      min-height: 100vh;
       touch-action: ${touchAction};
       -webkit-user-select: none !important;
       user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: ${overscrollY};
     }
     * {
       -webkit-touch-callout: none !important;
@@ -258,15 +265,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
     ${typeScale}
     ${readingType}
-    a:link, a:visited { color: ${link} !important; }
+    ${linkRule}
     pre, code, kbd, samp {
       white-space: pre-wrap !important;
     }
-    img, svg, video {
-      max-width: 100% !important;
-      height: auto !important;
-      ${imgFilter}
-    }
+    ${imgRule}
     aside[epub|type~="endnote"],
     aside[epub|type~="footnote"],
     aside[epub|type~="note"],

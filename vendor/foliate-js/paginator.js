@@ -806,19 +806,26 @@ export class Paginator extends HTMLElement {
         this.#container[this.scrollProp] += this.#vertical ? dx : dy
     }
     snap(vx, vy) {
-        const raw = this.#vertical ? vy : vx
-        const velocity = Math.max(-0.85, Math.min(0.85, Number.isFinite(raw) ? raw : 0))
+        const velocity = this.#vertical ? vy : vx
         const [offset, a, b] = this.#scrollBounds
         const { start, end, pages, size } = this
         const min = Math.abs(offset) - a
         const max = Math.abs(offset) + b
         const d = velocity * (this.#rtl ? -size : size)
-        let page = Math.floor(
-            Math.max(min, Math.min(max, (start + end) / 2 + d)) / size)
-        const first = pages > 2 ? 1 : 0
-        const last = pages > 2 ? pages - 2 : Math.max(0, pages - 1)
-        page = Math.max(first, Math.min(last, page))
-        return this.#scrollToPage(page, 'snap')
+        const page = Math.floor(
+            Math.max(min, Math.min(max, (start + end) / 2
+                + (isNaN(d) ? 0 : d))) / size)
+
+        this.#scrollToPage(page, 'snap').then(() => {
+            const dir = page <= 0 ? -1 : page >= pages - 1 ? 1 : null
+            if (!dir) return
+            const index = this.#adjacentIndex(dir)
+            if (index == null) return
+            return this.#goTo({
+                index,
+                anchor: dir < 0 ? () => 1 : () => 0,
+            })
+        })
     }
     #onTouchStart(e) {
         const touch = e.changedTouches[0]

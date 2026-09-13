@@ -1,4 +1,4 @@
-/** Horizontal page/chapter turn. Ignores flicks that were mostly vertical (fast scroll). */
+/** Horizontal chapter turn while scrolling. Paginated swipe is handled by the paginator. */
 export function shouldHorizontalTurn(
   dx: number,
   dy: number,
@@ -8,9 +8,9 @@ export function shouldHorizontalTurn(
   const ady = Math.abs(dy)
   const farthest = Math.max(ady, opts.farthestDy ?? ady)
   if (opts.scrolled) {
-    return adx >= 88 && adx > ady * 2.6 && farthest < 48
+    return adx >= 80 && adx > ady * 2.2 && farthest < 56
   }
-  return adx >= 72 && adx > ady * 1.85 && farthest < 64
+  return adx >= 56 && adx > ady * 1.4 && farthest < 96
 }
 
 export function turnDirection(dx: number): 'next' | 'prev' {

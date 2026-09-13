@@ -35,12 +35,13 @@ describe('buildReaderCSS', () => {
   it('lets the compositor pan the chapter in scroll mode', () => {
     const scrolled = buildReaderCSS({ ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
     expect(scrolled).toMatch(/touch-action: pan-y/)
-    expect(scrolled).toMatch(/overscroll-behavior-y: contain/)
+    expect(scrolled).not.toMatch(/overscroll-behavior-y: contain/)
     expect(css).toMatch(/touch-action: pan-x pan-y/)
   })
 
   it('fills short chapters so a swipe on empty space still turns the page', () => {
-    expect(css).toMatch(/min-height: 100vh/)
+    expect(css).toMatch(/min-height: 100%/)
+    expect(css).not.toMatch(/min-height: 100vh/)
   })
 
     it('does not override the book typeface or sizes when Book default is selected', () => {
@@ -51,8 +52,9 @@ describe('buildReaderCSS', () => {
     expect(css).not.toMatch(/p, li, blockquote, dd \{[\s\S]*text-align: justify/)
     expect(css).not.toMatch(/p, li, blockquote, dd, div, section, article/)
     expect(css).not.toMatch(/body \{[\s\S]*font-size: 1em !important/)
-    expect(css).not.toMatch(/font-size: 18px !important/)
+    expect(css).not.toMatch(/font-size: 18px/)
     expect(css).not.toMatch(/margin: 0 !important; padding: 0 !important;/)
+    expect(css).not.toMatch(/height: auto !important/)
     expect(css).toMatch(/user-select: none/)
   })
 

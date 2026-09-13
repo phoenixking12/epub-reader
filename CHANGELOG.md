@@ -2,6 +2,16 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.1 — 2026-09-13
+
+Same Android id as 4.0.0. This APK replaces 4.1.0 and keeps the library.
+
+### Fixed
+
+- Side swipe turns pages again in swipe mode
+- Vertical pan works again in scroll mode
+- Book default no longer forces the reader font size, so EPUB typeface, centered titles, and subheads match the file
+
 ## 4.1.0 — 2026-09-13
 
 Same Android id as 4.0.0. This APK replaces 4.0.3 and keeps the library.

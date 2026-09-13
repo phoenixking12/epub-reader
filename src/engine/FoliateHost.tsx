@@ -12,9 +12,27 @@ import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 import { shouldHorizontalTurn, turnDirection } from './pageTurn'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
-import { usesPublisherFont } from '../settings/defaults'
+import { usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
+
+function applyInlineType(doc: Document, settings: DisplaySettings) {
+  const html = doc.documentElement
+  const body = doc.body
+  if (usesPublisherFont(settings.fontFamily)) {
+    html.style.removeProperty('font-family')
+    body?.style.removeProperty('font-family')
+    if (settings.fontSize === DEFAULT_DISPLAY.fontSize) {
+      html.style.removeProperty('font-size')
+    } else {
+      html.style.fontSize = `${(settings.fontSize / DEFAULT_DISPLAY.fontSize) * 100}%`
+    }
+    return
+  }
+  html.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
+  html.style.setProperty('font-family', settings.fontFamily, 'important')
+  body?.style.setProperty('font-family', settings.fontFamily, 'important')
+}
 
 export interface SelectionInfo {
   cfi: string
@@ -346,11 +364,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const next = { ...settingsRef.current, fontSize: size }
     settingsRef.current = next
     view.renderer.setStyles?.(buildReaderCSS(next))
-    const publisher = usesPublisherFont(next.fontFamily)
     for (const part of view.renderer.getContents()) {
       if (!part.doc) continue
-      if (publisher) part.doc.documentElement.style.fontSize = `${size}px`
-      else part.doc.documentElement.style.setProperty('font-size', `${size}px`, 'important')
+      applyInlineType(part.doc, next)
     }
     const margin = view.renderer.getAttribute('margin')
     if (margin) view.renderer.setAttribute('margin', margin)
@@ -951,12 +967,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         const t = e.changedTouches[0]
         const dx = t.clientX - state.x
         const dy = t.clientY - state.y
-        const mode = settingsRef.current.pageTurnMode
         const scrolled = isScrollMode()
-        if (
-          (mode === 'swipe' || scrolled) &&
-          shouldHorizontalTurn(dx, dy, { scrolled, farthestDy: state.farthestDy })
-        ) {
+        if (scrolled && shouldHorizontalTurn(dx, dy, { scrolled: true, farthestDy: state.farthestDy })) {
           e.stopPropagation()
           applyHorizontalTurn(dx)
           return
@@ -1062,7 +1074,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (isScrollMode()) {
-          return
+          e.preventDefault()
+          panChapter(e.deltaY * 1.35)
         }
       },
       opts,
@@ -1088,6 +1101,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!view?.renderer) return
       applyRendererLayout(view.renderer, next)
       view.renderer.setStyles?.(buildReaderCSS(next))
+      for (const part of view.renderer.getContents()) {
+        if (part.doc) applyInlineType(part.doc, next)
+      }
     },
     relayout: () => {
       const renderer = viewRef.current?.renderer as { render?: () => void } | undefined
@@ -1494,14 +1510,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     applyRendererLayout(view.renderer, settingsRef.current)
     view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      part.doc?.documentElement.style.setProperty('font-size', `${settingsRef.current.fontSize}px`, 'important')
-      if (usesPublisherFont(settingsRef.current.fontFamily)) {
-        part.doc?.documentElement.style.removeProperty('font-family')
-        part.doc?.body?.style.removeProperty('font-family')
-      } else {
-        part.doc?.documentElement.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
-        part.doc?.body?.style.setProperty('font-family', settingsRef.current.fontFamily, 'important')
-      }
+      if (part.doc) applyInlineType(part.doc, settingsRef.current)
     }
   }, [settingsKey])
 
