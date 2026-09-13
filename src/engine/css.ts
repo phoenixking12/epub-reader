@@ -18,7 +18,25 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   const publisher = usesPublisherFont(settings.fontFamily)
   const faces = publisher ? '' : collectDocumentFontFaces()
   const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
+  const bodyFontSize = publisher ? '' : 'font-size: 1em !important;'
   const touchAction = settings.pageTurnMode === 'scroll' ? 'pan-y' : 'pan-x pan-y'
+  const readingType = publisher
+    ? ''
+    : `
+    p, li, blockquote, dd {
+      line-height: ${settings.lineHeight} !important;
+      text-align: ${settings.justify ? 'justify' : 'start'};
+      -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
+      hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
+      hanging-punctuation: allow-end last;
+      orphans: 2;
+      widows: 2;
+    }
+    [align="left"] { text-align: left !important; }
+    [align="right"] { text-align: right !important; }
+    [align="center"] { text-align: center !important; }
+    [align="justify"] { text-align: justify !important; }
+    `
   const typeScale = publisher
     ? ''
     : `
@@ -90,7 +108,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       background: transparent !important;
       color: inherit !important;
       ${fontFamilyCss}
-      font-size: 1em !important;
+      ${bodyFontSize}
       margin: 0 !important;
       padding: 0 !important;
       touch-action: ${touchAction};
@@ -230,20 +248,8 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     .lg-sel-handle[data-edge="start"]::after { top: 0; }
     .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
     ${typeScale}
+    ${readingType}
     a:link, a:visited { color: ${link} !important; }
-    p, li, blockquote, dd, div, section, article {
-      line-height: ${settings.lineHeight} !important;
-      text-align: ${settings.justify ? 'justify' : 'start'};
-      -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hanging-punctuation: allow-end last;
-      orphans: 2;
-      widows: 2;
-    }
-    [align="left"] { text-align: left !important; }
-    [align="right"] { text-align: right !important; }
-    [align="center"] { text-align: center !important; }
-    [align="justify"] { text-align: justify !important; }
     pre, code, kbd, samp {
       white-space: pre-wrap !important;
     }

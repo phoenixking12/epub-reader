@@ -785,10 +785,34 @@ class Loader {
     }
     async loadHref(href, base, parents = []) {
         if (isExternal(href)) return href
-        const path = resolveURL(href, base)
+        const raw = String(href).split('#')[0].split('?')[0].trim()
+        if (!raw) return href
+        const path = resolveURL(raw, base)
+        const fileName = path.split('/').pop()
         const item = this.manifest.find(item => item.href === path)
-        if (!item) return href
-        return this.loadItem(item, parents.concat(base))
+            || this.manifest.find(item => {
+                try { return decodeURI(item.href) === path || item.href === decodeURI(path) }
+                catch { return false }
+            })
+            || (fileName && /\.(ttf|otf|woff2?|eot)$/i.test(fileName)
+                ? this.manifest.find(item => item.href.split('/').pop() === fileName)
+                : null)
+        if (item) return this.loadItem(item, parents.concat(base))
+        try {
+            const blob = await this.loadBlob(path)
+            if (blob) {
+                const ext = (fileName?.split('.').pop() || '').toLowerCase()
+                const type = {
+                    ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff',
+                    woff2: 'font/woff2', eot: 'application/vnd.ms-fontobject',
+                    css: MIME.CSS,
+                }[ext] || 'application/octet-stream'
+                return this.createURL(path, blob, type, parents.at(-1))
+            }
+        } catch {
+            /* missing from zip */
+        }
+        return href
     }
     async loadReplaced(item, parents = []) {
         const { href, mediaType } = item

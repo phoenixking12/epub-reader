@@ -449,7 +449,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
       <SelectionToolbar
         visible={Boolean(selection) && !noteFor}
         quote={selection?.text}
-        existing={Boolean(selectedAnn)}
+        existing={Boolean(selectedAnn || selection?.annotationId)}
         defaultStyle={selectedAnn?.style ?? settingsRow.display.defaultAnnotationStyle}
         defaultColor={selectedAnn?.color ?? settingsRow.display.defaultAnnotationColor}
         customColors={settingsRow.display.customHighlightColors}
@@ -508,9 +508,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
           if (selection) void navigator.clipboard.writeText(selection.text)
         }}
         onRemove={
-          selectedAnn
+          selectedAnn || selection?.annotationId
             ? () => {
-                void db.annotations.delete(selectedAnn.id)
+                const id = selectedAnn?.id ?? selection?.annotationId
+                if (id) void db.annotations.delete(id)
                 host.current?.deselect()
                 setSelection(null)
               }

@@ -54,9 +54,9 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
 
   const sections = useMemo(() => groupBooks(filtered, sort, group), [filtered, sort, group])
 
-  const finishImport = (summary: { added: number; skipped: number }, empty = false) => {
-    setStatus(formatImportSummary(summary, empty))
-    if (!summary.added && !summary.skipped && !empty) setError('Only EPUB files are supported')
+  const finishImport = (summary: { added: number; skipped: number }, empty = false, extra?: { scanned?: boolean; needsPermission?: boolean }) => {
+    setStatus(formatImportSummary(summary, empty, extra))
+    if (!summary.added && !summary.skipped && !empty && !extra?.needsPermission) setError('Only EPUB files are supported')
   }
 
   const addFiles = async (files: FileList | File[]) => {
@@ -75,20 +75,25 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
     }
   }
 
-  const addFromNative = async (mode: 'files' | 'folder') => {
+  const addFromNative = async (mode: 'files' | 'folder' | 'scan') => {
     setAddOpen(false)
     setBusy(true)
     setError('')
     setStatus('')
     try {
+      if (mode === 'scan') setProgress('Scanning…')
       const picked = await pickNativeBooks(mode)
+      if (picked.needsPermission) {
+        finishImport({ added: 0, skipped: 0 }, true, { scanned: true, needsPermission: true })
+        return
+      }
       if (picked.cancelled) return
       if (!picked.items.length) {
-        finishImport({ added: 0, skipped: 0 }, true)
+        finishImport({ added: 0, skipped: 0 }, true, { scanned: mode === 'scan' })
         return
       }
       const summary = await ingestNativeItems(picked.items, (done, total) => setProgress(`Adding ${done}/${total}`))
-      finishImport(summary)
+      finishImport(summary, false, { scanned: mode === 'scan' })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not import EPUB')
     } finally {
@@ -105,6 +110,10 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
   const startAddFolder = () => {
     if (isNative()) void addFromNative('folder')
     else folderRef.current?.click()
+  }
+
+  const startScanPhone = () => {
+    if (isNative()) void addFromNative('scan')
   }
 
   useEffect(() => {
@@ -273,7 +282,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
           </header>
           <p className="muted">
             {isNative()
-              ? 'Files and folders are copied into the app. After that, reading works with no internet.'
+              ? 'Files and folders are copied into the app. Scan phone looks through storage for every .epub. After that, reading works with no internet.'
               : 'Choose one or more EPUB files, or a folder that contains them.'}
           </p>
           <div className="action-row">
@@ -283,6 +292,11 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
             <button className="chip" disabled={busy} onClick={startAddFolder}>
               Choose folder
             </button>
+            {isNative() && (
+              <button className="chip" disabled={busy} onClick={startScanPhone}>
+                Scan phone
+              </button>
+            )}
           </div>
         </div>
       )}

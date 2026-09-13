@@ -2,6 +2,19 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.0.3 — 2026-09-13
+
+Same Android id as 4.0.0. This APK replaces 4.0.2 and keeps the library.
+
+### Added
+
+- **Scan phone** on **+ Add** copies every `.epub` it finds on the device (needs all-files access once)
+
+### Fixed
+
+- Font color can be cleared after you unselect: tap the colored word, then Font color or the same swatch
+- Book default no longer flattens chapter titles and subheads, and loads EPUB fonts that were missing from the OPF lookup
+
 ## 4.0.2 — 2026-09-13
 
 Same Android id as 4.0.0. This APK replaces 4.0.1 and keeps the library.

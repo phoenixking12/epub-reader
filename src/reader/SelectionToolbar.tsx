@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
 import { ColorRow } from './ColorRow'
-import { shouldRemoveMark } from './toggleMark'
+import { shouldRemoveColor, shouldRemoveMark } from './toggleMark'
 import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
@@ -140,7 +140,13 @@ export function SelectionToolbar({
           setMoreOpen(false)
           setWheelOpen((v) => !v)
         }}
-        onPick={(c) => apply(style, c)}
+        onPick={(c) => {
+          if (shouldRemoveColor(existing, style, color, c) && onRemove) {
+            onRemove()
+            return
+          }
+          apply(style, c)
+        }}
         onWheelChange={setColor}
         onWheelCommit={(c) => apply(style, c)}
       />

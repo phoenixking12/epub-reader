@@ -4,7 +4,7 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 
 ## Library
 
-- **+ Add** copies EPUB files or a whole folder into the app.
+- **+ Add** copies EPUB files or a whole folder into the app. **Scan phone** (Android) looks through storage for every `.epub` and copies the ones that are not already in the library. The first scan asks for all-files access.
 - The shelf at the top shows one spine for every book, with the same titles as the grid below.
 - The **⋮** menu on a cover pins a book, edits labels, deletes it, or (on Android) adds a home-screen shortcut.
 - **Settings** covers lookup engines, backups, and default highlight color.
@@ -44,10 +44,10 @@ In **Menu → Display → Turn pages**:
 
 1. Long-press a word, then drag the orange handles to set the start and end.
 2. The tool panel appears **above** the selection.
-3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once. Tap the same mark again to clear it.
+3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once. Tap the same mark again to clear it. For font color, tap **Font color** or the same swatch again to restore the book’s original color.
 4. Tap an existing mark (including font-color text) to select the whole span, then change its color/style or tap that style again to remove it.
 5. Swipe a sheet, the reading menu, or the contents drawer down (or the drawer left) to close it.
-5. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
+6. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
 
 Highlight color also lives in **Display**.
 

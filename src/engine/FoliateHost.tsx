@@ -13,6 +13,7 @@ import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkB
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
 import { usesPublisherFont } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
+import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
 
 export interface SelectionInfo {
   cfi: string
@@ -460,11 +461,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const box = rangeBox(range)
     const origin = toViewport(doc, 0, 0)
     const cfi = overlayCfi || cfiFor(index, range)
-    const wrap =
-      range.commonAncestorContainer instanceof Element
-        ? range.commonAncestorContainer.closest?.('[data-lg-ann]')
-        : range.commonAncestorContainer.parentElement?.closest?.('[data-lg-ann]')
-    const wrapId = wrap instanceof HTMLElement ? wrap.dataset.lgAnn : undefined
+    const wrapId = annotationWrapFromRange(range)?.dataset.lgAnn
     const rec =
       annotationsRef.current.find((a) => a.cfiRange === cfi) ||
       annotationsRef.current.find((a) => a.id === wrapId)
@@ -485,9 +482,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const hitAnnotation = (doc: Document, x: number, y: number) => {
     const view = viewRef.current
     if (!view?.renderer) return null
-    const el = doc.elementFromPoint(x, y)
-    const wrap = el?.closest?.('[data-lg-ann]')
-    if (wrap instanceof HTMLElement && wrap.dataset.lgAnn) {
+    const wrap = annotationWrapFromPoint(doc, x, y, rangeFromPoint(doc, x, y))
+    if (wrap?.dataset.lgAnn) {
       const rec = annotationsRef.current.find((a) => a.id === wrap.dataset.lgAnn)
       if (rec) {
         const around = doc.createRange()

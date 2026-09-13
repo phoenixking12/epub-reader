@@ -38,11 +38,14 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/touch-action: pan-x pan-y/)
   })
 
-  it('does not override the book typeface or sizes when Book default is selected', () => {
+    it('does not override the book typeface or sizes when Book default is selected', () => {
     expect(css).not.toMatch(/font-family: publisher/)
     expect(css).not.toMatch(/font-family: "Source Serif 4"/)
     expect(css).not.toMatch(/h1 \{ font-size: 1\.85em/)
     expect(css).not.toMatch(/JetBrains Mono/)
+    expect(css).not.toMatch(/p, li, blockquote, dd \{[\s\S]*text-align: justify/)
+    expect(css).not.toMatch(/p, li, blockquote, dd, div, section, article/)
+    expect(css).not.toMatch(/body \{[\s\S]*font-size: 1em !important/)
     expect(css).toMatch(/user-select: none/)
   })
 
@@ -50,6 +53,8 @@ describe('buildReaderCSS', () => {
     expect(styled).toMatch(/html \{[\s\S]*font-family: "Source Serif 4"/)
     expect(styled).toMatch(/body \{[\s\S]*font-family: "Source Serif 4"/)
     expect(styled).not.toMatch(/span, a \{\s*font-family/)
+    expect(styled).toMatch(/p, li, blockquote, dd \{[\s\S]*text-align: justify/)
+    expect(styled).not.toMatch(/p, li, blockquote, dd, div, section, article/)
   })
 
   it('keeps text unselected until a long-press opts in', () => {

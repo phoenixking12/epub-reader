@@ -64,6 +64,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               ))}
             </select>
           </label>
+          <p className="muted tiny">Book default keeps the EPUB’s own fonts, heading sizes, and alignment.</p>
           <label className="field">
             Size {Math.round(settings.fontSize)}
             <input

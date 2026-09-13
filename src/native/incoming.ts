@@ -9,12 +9,14 @@ export interface NativeBookItem {
 export interface NativePickResult {
   items: NativeBookItem[]
   cancelled?: boolean
+  needsPermission?: boolean
 }
 
 export interface IncomingEpubPlugin {
   consume(): Promise<{ found: boolean; name?: string; base64?: string }>
   importFiles(): Promise<NativePickResult>
   importFolder(): Promise<NativePickResult>
+  scanDevice(): Promise<NativePickResult>
   pinShortcut(options: { id: string; title: string }): Promise<void>
 }
 

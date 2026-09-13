@@ -42,15 +42,31 @@ export async function addBooksFromFiles(
 }
 
 export async function pickNativeBooks(
-  mode: 'files' | 'folder',
-): Promise<{ items: NativeBookItem[]; cancelled: boolean }> {
+  mode: 'files' | 'folder' | 'scan',
+): Promise<{ items: NativeBookItem[]; cancelled: boolean; needsPermission?: boolean }> {
   if (!isNative()) return { items: [], cancelled: true }
-  const result = mode === 'folder' ? await IncomingEpub.importFolder() : await IncomingEpub.importFiles()
-  return { items: result.items ?? [], cancelled: Boolean(result.cancelled) }
+  const result =
+    mode === 'folder'
+      ? await IncomingEpub.importFolder()
+      : mode === 'scan'
+        ? await IncomingEpub.scanDevice()
+        : await IncomingEpub.importFiles()
+  return {
+    items: result.items ?? [],
+    cancelled: Boolean(result.cancelled),
+    needsPermission: Boolean(result.needsPermission),
+  }
 }
 
-export function formatImportSummary(summary: ImportSummary, emptyFolder: boolean): string {
-  if (emptyFolder) return 'No EPUB files in that folder'
+export function formatImportSummary(
+  summary: ImportSummary,
+  emptyFolder: boolean,
+  opts?: { scanned?: boolean; needsPermission?: boolean },
+): string {
+  if (opts?.needsPermission) {
+    return 'Allow all-files access in Settings, then tap Scan phone again'
+  }
+  if (emptyFolder) return opts?.scanned ? 'No EPUB files found on this phone' : 'No EPUB files in that folder'
   if (!summary.added && !summary.skipped) return 'No EPUB files were added'
   const parts: string[] = []
   if (summary.added) parts.push(`Added ${summary.added} book${summary.added === 1 ? '' : 's'}`)
