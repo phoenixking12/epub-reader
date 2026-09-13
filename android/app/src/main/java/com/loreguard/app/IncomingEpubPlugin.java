@@ -3,6 +3,7 @@ package com.loreguard.app;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Intent;
 import android.content.pm.ShortcutInfo;
@@ -331,11 +332,7 @@ public class IncomingEpubPlugin extends Plugin {
     }
 
     private void runScan(PluginCall call) {
-        if (getBridge() == null) {
-            call.reject("Could not scan storage");
-            return;
-        }
-        getBridge().getThreadPool().execute(() -> {
+        new Thread(() -> {
             JSArray items = new JSArray();
             Set<String> seen = new HashSet<>();
             File appBooks = new File(getContext().getFilesDir(), "books");
@@ -347,7 +344,7 @@ public class IncomingEpubPlugin extends Plugin {
             ret.put("needsPermission", false);
             ret.put("cancelled", false);
             call.resolve(ret);
-        });
+        }, "lg-epub-scan").start();
     }
 
     private void walkForEpubs(File dir, JSArray items, Set<String> seen, File appBooks, int depth) {
