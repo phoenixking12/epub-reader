@@ -1,3 +1,5 @@
+import { useSwipeClose } from '../ui/useSwipeClose'
+
 interface Props {
   open: boolean
   hasMedia: boolean
@@ -19,6 +21,7 @@ export function ReaderMenu({
   onAudio,
   onClose,
 }: Props) {
+  const swipe = useSwipeClose(onClose, 'menu')
   if (!open) return null
   const go = (fn: () => void) => {
     onClose()
@@ -27,7 +30,14 @@ export function ReaderMenu({
   return (
     <>
       <button className="menu-scrim" type="button" aria-label="Close menu" onClick={onClose} />
-      <div className="reader-menu" role="menu" aria-label="Reading menu">
+      <div
+        ref={swipe.ref}
+        className="reader-menu"
+        role="menu"
+        aria-label="Reading menu"
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <button type="button" role="menuitem" onClick={() => go(onNotes)}>
           Notes
         </button>

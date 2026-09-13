@@ -302,7 +302,7 @@ select option { background: #1c1917; color: #fafaf9; }
   to { opacity: 1; }
 }
 .reader.scroll-mode {
-  touch-action: none;
+  touch-action: pan-y;
 }
 .foliate-host {
   position: absolute;
@@ -315,7 +315,7 @@ select option { background: #1c1917; color: #fafaf9; }
   touch-action: pan-x pan-y;
 }
 .reader.scroll-mode .foliate-host {
-  touch-action: none;
+  touch-action: pan-y;
 }
 .reader.chrome-on .foliate-host {
   top: max(var(--chrome-h), calc(48px + var(--lg-sat)));

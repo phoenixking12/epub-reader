@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AnnotationStyle, WebSearchEngine } from '../types/models'
 import { ColorRow } from './ColorRow'
+import { shouldRemoveMark } from './toggleMark'
+import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
   visible: boolean
@@ -54,6 +56,7 @@ export function SelectionToolbar({
   const [wheelOpen, setWheelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const popRef = useRef<HTMLDivElement>(null)
+  const swipe = useSwipeClose(onClose, 'menu')
   const [pos, setPos] = useState({ top: 0, left: 8 })
 
   useEffect(() => {
@@ -98,11 +101,16 @@ export function SelectionToolbar({
 
   return (
     <div
-      ref={popRef}
+      ref={(node) => {
+        popRef.current = node
+        swipe.ref(node)
+      }}
       className="selection-pop"
       role="dialog"
       aria-label="Selection"
       style={{ top: pos.top, left: pos.left }}
+      onTouchStart={swipe.onTouchStart}
+      onTouchEnd={swipe.onTouchEnd}
     >
       <div className="sel-styles">
         {STYLES.map((item) => (
@@ -112,7 +120,13 @@ export function SelectionToolbar({
             className={`sel-icon ${item.className ?? ''} ${style === item.id ? 'on' : ''}`}
             aria-label={item.label}
             aria-pressed={style === item.id}
-            onClick={() => apply(item.id, color)}
+            onClick={() => {
+              if (shouldRemoveMark(existing, style, item.id) && onRemove) {
+                onRemove()
+                return
+              }
+              apply(item.id, color)
+            }}
           >
             {item.mark}
           </button>
@@ -134,11 +148,6 @@ export function SelectionToolbar({
         <button className="sel-btn ghost" onClick={onClose} aria-label="Close">
           ✕
         </button>
-        {existing && onRemove ? (
-          <button className="sel-btn ghost" onClick={onRemove}>
-            Remove
-          </button>
-        ) : null}
         <button className="sel-btn" onClick={onNote}>
           Note
         </button>

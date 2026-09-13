@@ -4,14 +4,15 @@ import { DEFAULT_DISPLAY } from '../settings/defaults'
 
 describe('buildReaderCSS', () => {
   const css = buildReaderCSS(DEFAULT_DISPLAY)
+  const styled = buildReaderCSS({ ...DEFAULT_DISPLAY, fontFamily: '"Source Serif 4", Georgia, serif' })
 
-  it('makes headings larger and bold, including nested spans', () => {
-    expect(css).toMatch(/h1, h2, h3, h4, h5, h6 \{[\s\S]*font-weight: 700/)
-    expect(css).toMatch(/h2 \{ font-size: 1\.55em/)
-    expect(css).toMatch(/h3 \{ font-size: 1\.38em/)
-    expect(css).toMatch(/h1 \*, h2 \*, h3 \*, h4 \*, h5 \*, h6 \* \{[\s\S]*font-weight: inherit/)
-    expect(css).toMatch(/p\.subtitle[\s\S]*font-weight: 700/)
-    expect(css).toMatch(/h1:first-child[\s\S]*margin-top: 0/)
+  it('makes headings larger and bold only when a reader typeface is chosen', () => {
+    expect(styled).toMatch(/h1, h2, h3, h4, h5, h6 \{[\s\S]*font-weight: 700/)
+    expect(styled).toMatch(/h2 \{ font-size: 1\.55em/)
+    expect(styled).toMatch(/h3 \{ font-size: 1\.38em/)
+    expect(styled).toMatch(/h1 \*, h2 \*, h3 \*, h4 \*, h5 \*, h6 \* \{[\s\S]*font-weight: inherit/)
+    expect(styled).toMatch(/p\.subtitle[\s\S]*font-weight: 700/)
+    expect(styled).toMatch(/h1:first-child[\s\S]*margin-top: 0/)
   })
 
   it('keeps paragraph bookmark marks small', () => {
@@ -31,20 +32,29 @@ describe('buildReaderCSS', () => {
     expect(css).toMatch(/\.lg-sel-handle \{/)
   })
 
-  it('disables native iframe pan in scroll mode so chapter pan can run', () => {
+  it('lets the compositor pan the chapter in scroll mode', () => {
     const scrolled = buildReaderCSS({ ...DEFAULT_DISPLAY, pageTurnMode: 'scroll', flow: 'scrolled' })
-    expect(scrolled).toMatch(/touch-action: none/)
+    expect(scrolled).toMatch(/touch-action: pan-y/)
     expect(css).toMatch(/touch-action: pan-x pan-y/)
   })
 
-  it('does not override the book typeface when Book default is selected', () => {
+  it('does not override the book typeface or sizes when Book default is selected', () => {
     expect(css).not.toMatch(/font-family: publisher/)
     expect(css).not.toMatch(/font-family: "Source Serif 4"/)
+    expect(css).not.toMatch(/h1 \{ font-size: 1\.85em/)
+    expect(css).not.toMatch(/JetBrains Mono/)
+    expect(css).toMatch(/user-select: none/)
   })
 
-  it('allows text selection so long-press can highlight a word', () => {
-    expect(css).toMatch(/user-select: text/)
-    expect(css).not.toMatch(/user-select: none/)
+  it('applies a chosen typeface on html and body only', () => {
+    expect(styled).toMatch(/html \{[\s\S]*font-family: "Source Serif 4"/)
+    expect(styled).toMatch(/body \{[\s\S]*font-family: "Source Serif 4"/)
+    expect(styled).not.toMatch(/span, a \{\s*font-family/)
+  })
+
+  it('keeps text unselected until a long-press opts in', () => {
+    expect(css).toMatch(/html\.lg-selecting/)
+    expect(css).toMatch(/user-select: none/)
   })
 })
 

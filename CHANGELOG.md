@@ -2,6 +2,20 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.0.2 — 2026-09-13
+
+Same Android id as 4.0.0. This APK replaces 4.0.1 and keeps the library.
+
+### Changed
+
+- Highlight, underline, font color, bold, italic, strike, and squiggle toggle off if you tap the same mark again
+- Text, Display, Find, Notes, the reading menu, the drawer, and the selection popup close on a downward swipe
+
+### Fixed
+
+- Scroll uses the compositor pan (as Readily-style readers do): no JS pan fighting native scroll, and text stays unselected until a still long-press
+- Book default keeps the EPUB’s own typefaces and sizes instead of flattening them to the reader chrome
+
 ## 4.0.1 — 2026-09-13
 
 Same Android id as 4.0.0 (`com.loreguard.app`). This APK replaces 4.0.0 and keeps the library.

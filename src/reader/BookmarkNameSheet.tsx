@@ -1,3 +1,5 @@
+import { useSwipeClose } from '../ui/useSwipeClose'
+
 interface Props {
   open: boolean
   title: string
@@ -10,9 +12,17 @@ interface Props {
 }
 
 export function BookmarkNameSheet({ open, title, quote, existing, onTitle, onSave, onRemove, onClose }: Props) {
+  const swipe = useSwipeClose(onClose, 'sheet')
   if (!open) return null
   return (
-    <div className="sheet note-sheet bookmark-sheet" role="dialog" aria-label="Bookmark name">
+    <div
+      ref={swipe.ref}
+      className="sheet note-sheet bookmark-sheet"
+      role="dialog"
+      aria-label="Bookmark name"
+      onTouchStart={swipe.onTouchStart}
+      onTouchEnd={swipe.onTouchEnd}
+    >
       <header className="sheet-head">
         <h2>{existing ? 'Bookmark' : 'Name bookmark'}</h2>
         <button className="icon-btn" type="button" onClick={onClose}>

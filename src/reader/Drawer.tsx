@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { AnnotationRecord, BookmarkRecord, TocNode } from '../types/models'
+import { useSwipeClose } from '../ui/useSwipeClose'
 
 export type DrawerTab = 'toc' | 'marks'
 export type DrawerMode = 'nav' | 'notes'
@@ -72,6 +73,7 @@ export function Drawer({
 }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const swipe = useSwipeClose(onClose, 'drawer')
   const notes = useMemo(
     () => annotations.filter((a) => a.note.trim()).sort((a, b) => b.createdAt - a.createdAt),
     [annotations],
@@ -90,7 +92,14 @@ export function Drawer({
   return (
     <div className="drawer-root">
       <button className="drawer-scrim" aria-label="Close" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-label={heading}>
+      <aside
+        ref={swipe.ref}
+        className="drawer"
+        role="dialog"
+        aria-label={heading}
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <header className="drawer-head">
           {mode === 'nav' && onLibrary ? (
             <button className="icon-btn" onClick={onLibrary}>

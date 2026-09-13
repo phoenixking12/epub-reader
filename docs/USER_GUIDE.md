@@ -44,8 +44,9 @@ In **Menu → Display → Turn pages**:
 
 1. Long-press a word, then drag the orange handles to set the start and end.
 2. The tool panel appears **above** the selection.
-3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once.
-4. Tap an existing mark (including font-color text) to select the whole span, then change its color/style or **Remove**.
+3. Tap **Highlight**, **Underline**, or **Font color**, then a color. Bold, italic, strike, and squiggle apply at once. Tap the same mark again to clear it.
+4. Tap an existing mark (including font-color text) to select the whole span, then change its color/style or tap that style again to remove it.
+5. Swipe a sheet, the reading menu, or the contents drawer down (or the drawer left) to close it.
 5. **Note** opens a blank note field. **Menu → Notes** lists only notes you wrote.
 
 Highlight color also lives in **Display**.

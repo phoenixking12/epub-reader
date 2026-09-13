@@ -15,9 +15,58 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   const writing =
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
-  const faces = collectDocumentFontFaces()
   const publisher = usesPublisherFont(settings.fontFamily)
+  const faces = publisher ? '' : collectDocumentFontFaces()
   const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
+  const touchAction = settings.pageTurnMode === 'scroll' ? 'pan-y' : 'pan-x pan-y'
+  const typeScale = publisher
+    ? ''
+    : `
+    p:not(.subtitle):not(.subhead):not(.subheading):not(.heading):not(.title),
+    li, blockquote, dd,
+    div:not(.subtitle):not(.subhead):not(.subheading),
+    section, article, aside, td, th {
+      font-size: inherit !important;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 700 !important;
+      line-height: 1.25 !important;
+      margin-top: 0.55em !important;
+      margin-bottom: 0.35em !important;
+    }
+    h1:first-child, h2:first-child, h3:first-child,
+    h4:first-child, h5:first-child, h6:first-child {
+      margin-top: 0 !important;
+    }
+    h1 { font-size: 1.85em !important; }
+    h2 { font-size: 1.55em !important; }
+    h3 { font-size: 1.38em !important; }
+    h4 { font-size: 1.18em !important; }
+    h5, h6 { font-size: 1.1em !important; }
+    h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
+      font-size: inherit !important;
+      font-weight: inherit !important;
+    }
+    [epub|type~="subtitle"],
+    p.subtitle, p.subhead, p.subheading, p.heading,
+    div.subtitle, div.subhead, div.subheading {
+      font-size: 1.38em !important;
+      font-weight: 700 !important;
+    }
+    pre, code, kbd, samp {
+      font-family: "JetBrains Mono", ui-monospace, monospace !important;
+      white-space: pre-wrap !important;
+    }
+    html body .subtitle,
+    html body .subhead,
+    html body p.subtitle,
+    html body p.subhead,
+    html body p.heading {
+      font-size: 1.5em !important;
+      font-weight: 700 !important;
+      font-synthesis: weight !important;
+    }
+    `
 
   return `
     @namespace epub "http://www.idpf.org/2007/ops";
@@ -29,12 +78,12 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${fontFamilyCss}
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'pan-x pan-y'};
-      -webkit-user-select: text !important;
-      user-select: text !important;
+      touch-action: ${touchAction};
+      -webkit-user-select: none !important;
+      user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior: none;
+      overscroll-behavior-y: auto;
       ${writing}
     }
     body {
@@ -44,26 +93,23 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       font-size: 1em !important;
       margin: 0 !important;
       padding: 0 !important;
-      touch-action: ${settings.pageTurnMode === 'scroll' ? 'none' : 'pan-x pan-y'};
-      -webkit-user-select: text !important;
-      user-select: text !important;
+      touch-action: ${touchAction};
+      -webkit-user-select: none !important;
+      user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior: none;
+      overscroll-behavior-y: auto;
     }
     * {
       -webkit-touch-callout: none !important;
     }
-    p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, td, th, span, a {
+    html.lg-selecting,
+    html.lg-selecting * {
       -webkit-user-select: text !important;
       user-select: text !important;
     }
-    ${
-      publisher
-        ? ''
-        : `body, p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, div, section, article, aside, td, th, span, a {
-      font-family: ${settings.fontFamily} !important;
-    }`
+    html.lg-selecting {
+      touch-action: none;
     }
     p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption {
       position: relative !important;
@@ -183,37 +229,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     }
     .lg-sel-handle[data-edge="start"]::after { top: 0; }
     .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
-    p:not(.subtitle):not(.subhead):not(.subheading):not(.heading):not(.title),
-    li, blockquote, dd,
-    div:not(.subtitle):not(.subhead):not(.subheading),
-    section, article, aside, td, th, span {
-      font-size: inherit !important;
-    }
-    h1, h2, h3, h4, h5, h6 {
-      font-weight: 700 !important;
-      line-height: 1.25 !important;
-      margin-top: 0.55em !important;
-      margin-bottom: 0.35em !important;
-    }
-    h1:first-child, h2:first-child, h3:first-child,
-    h4:first-child, h5:first-child, h6:first-child {
-      margin-top: 0 !important;
-    }
-    h1 { font-size: 1.85em !important; }
-    h2 { font-size: 1.55em !important; }
-    h3 { font-size: 1.38em !important; }
-    h4 { font-size: 1.18em !important; }
-    h5, h6 { font-size: 1.1em !important; }
-    h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
-      font-size: inherit !important;
-      font-weight: inherit !important;
-    }
-    [epub|type~="subtitle"],
-    p.subtitle, p.subhead, p.subheading, p.heading,
-    div.subtitle, div.subhead, div.subheading {
-      font-size: 1.38em !important;
-      font-weight: 700 !important;
-    }
+    ${typeScale}
     a:link, a:visited { color: ${link} !important; }
     p, li, blockquote, dd, div, section, article {
       line-height: ${settings.lineHeight} !important;
@@ -229,7 +245,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     [align="center"] { text-align: center !important; }
     [align="justify"] { text-align: justify !important; }
     pre, code, kbd, samp {
-      font-family: "JetBrains Mono", ui-monospace, monospace !important;
       white-space: pre-wrap !important;
     }
     img, svg, video {
@@ -244,15 +259,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${settings.footnotePosition === 'follow' ? '' : 'display: none;'}
     }
     math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }
-    html body .subtitle,
-    html body .subhead,
-    html body p.subtitle,
-    html body p.subhead,
-    html body p.heading {
-      font-size: 1.5em !important;
-      font-weight: 700 !important;
-      font-synthesis: weight !important;
-    }
   `
 }
 

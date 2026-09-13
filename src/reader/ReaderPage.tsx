@@ -18,6 +18,7 @@ import { ProgressScrub } from './ProgressScrub'
 import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
+import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
   bookId: string
@@ -71,6 +72,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [noteFor, setNoteFor] = useState<AnnotationRecord | SelectionInfo | null>(null)
   const [noteText, setNoteText] = useState('')
   const saveTimer = useRef(0)
+  const noteSwipe = useSwipeClose(() => setNoteFor(null), 'sheet')
+  const footnoteSwipe = useSwipeClose(() => setFootnote(null), 'sheet')
 
   const colors = themeColors(display)
   const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
@@ -547,7 +550,13 @@ export function ReaderPage({ bookId, onBack }: Props) {
       <ImageLightbox image={image} onClose={() => setImage(null)} />
 
       {footnote && (
-        <div className={`footnote-pop ${settingsRow.display.footnotePosition}`} role="dialog">
+        <div
+          ref={footnoteSwipe.ref}
+          className={`footnote-pop ${settingsRow.display.footnotePosition}`}
+          role="dialog"
+          onTouchStart={footnoteSwipe.onTouchStart}
+          onTouchEnd={footnoteSwipe.onTouchEnd}
+        >
           <button className="icon-btn" onClick={() => setFootnote(null)}>
             Close
           </button>
@@ -556,7 +565,12 @@ export function ReaderPage({ bookId, onBack }: Props) {
       )}
 
       {noteFor && (
-        <div className="sheet note-sheet">
+        <div
+          ref={noteSwipe.ref}
+          className="sheet note-sheet"
+          onTouchStart={noteSwipe.onTouchStart}
+          onTouchEnd={noteSwipe.onTouchEnd}
+        >
           <header className="sheet-head">
             <h2>Note</h2>
             <button

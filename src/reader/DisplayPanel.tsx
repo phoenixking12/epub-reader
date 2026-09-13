@@ -3,6 +3,7 @@ import { rememberCustomColor } from '../settings/colors'
 import { BUNDLED_FONTS, flowForPageTurn } from '../settings/defaults'
 import type { DisplaySettings, FontRecord, PageTurnMode } from '../types/models'
 import { ColorRow } from './ColorRow'
+import { useSwipeClose } from '../ui/useSwipeClose'
 
 export type DisplaySection = 'text' | 'display' | 'color'
 
@@ -26,10 +27,18 @@ const TURN_MODES: Array<{ id: PageTurnMode; label: string; hint: string }> = [
 
 export function DisplayPanel({ open, section, settings, customFonts, onChange, onImportFont, onClose }: Props) {
   const [wheelOpen, setWheelOpen] = useState(false)
+  const swipe = useSwipeClose(onClose, 'sheet')
   if (!open) return null
   const title = section === 'text' ? 'Text' : section === 'color' ? 'Color' : 'Display'
   return (
-    <div className="sheet display-sheet" role="dialog" aria-label={title}>
+    <div
+      ref={swipe.ref}
+      className="sheet display-sheet"
+      role="dialog"
+      aria-label={title}
+      onTouchStart={swipe.onTouchStart}
+      onTouchEnd={swipe.onTouchEnd}
+    >
       <div className="sheet-handle" />
       <header className="sheet-head">
         <h2>{title}</h2>

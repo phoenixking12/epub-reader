@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SearchHit } from '../engine/FoliateHost'
+import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
   open: boolean
@@ -15,10 +16,18 @@ export function SearchPanel({ open, regex, onRegexChange, onSearch, onGoTo, onCl
   const [hits, setHits] = useState<SearchHit[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const swipe = useSwipeClose(onClose, 'sheet')
 
   if (!open) return null
   return (
-    <div className="sheet search-sheet" role="dialog" aria-label="Search">
+    <div
+      ref={swipe.ref}
+      className="sheet search-sheet"
+      role="dialog"
+      aria-label="Search"
+      onTouchStart={swipe.onTouchStart}
+      onTouchEnd={swipe.onTouchEnd}
+    >
       <header className="sheet-head">
         <h2>Search</h2>
         <button className="icon-btn" onClick={onClose}>

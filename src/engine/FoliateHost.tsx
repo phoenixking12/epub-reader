@@ -299,26 +299,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     viewRef.current?.renderer?.pan?.(0, dy)
   }
 
-  const beginChapterPan = (clientY: number, time: number) => {
-    stopFling()
-    scrollPanRef.current.lastY = clientY
-    scrollPanRef.current.lastT = time
-    scrollPanRef.current.vy = 0
-    scrollPanRef.current.active = false
-  }
-
-  const moveChapterPan = (clientY: number, time: number) => {
-    const s = scrollPanRef.current
-    const dt = Math.max(1, time - s.lastT)
-    const dy = clientY - s.lastY
-    const inst = dy / dt
-    s.vy = s.vy * 0.55 + inst * 0.45
-    s.lastY = clientY
-    s.lastT = time
-    s.active = true
-    panChapter(-dy)
-  }
-
   const flingChapter = () => {
     const s = scrollPanRef.current
     if (s.active) s.suppressTapUntil = Date.now() + 200
@@ -743,6 +723,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (!info || !sel?.rangeCount) {
       if (savedRanges.current.has(doc) && doc.querySelector('.lg-sel-handle')) return
       liveSelectDocs.current.delete(doc)
+      doc.documentElement.classList.remove('lg-selecting')
       clearHandles(doc)
       onSelectionRef.current(null)
       return
@@ -842,6 +823,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (handleEl) {
           e.preventDefault()
           e.stopPropagation()
+          doc.documentElement.classList.add('lg-selecting')
           clearSelHighlight(doc)
           doc.documentElement.classList.remove('lg-custom-sel')
           const sel = restoreSavedRange(doc) ?? doc.getSelection()
@@ -879,8 +861,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (e.touches.length !== 1) return
         const t = e.touches[0]
         const moved = Math.hypot(t.clientX - state.x, t.clientY - state.y)
-        const totalX = t.clientX - state.x
-        const totalY = t.clientY - state.y
         const scrollMode = isScrollMode()
         if (state.handle || state.selecting) {
           e.preventDefault()
@@ -895,14 +875,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           state.armed = false
         }
         if (scrollMode) {
-          e.preventDefault()
-          e.stopPropagation()
-          if (state.panning || (moved > 4 && Math.abs(totalY) > Math.abs(totalX) * 0.55)) {
-            if (!state.panning) beginChapterPan(t.clientY, e.timeStamp)
-            state.panning = true
-            state.armed = false
-            moveChapterPan(t.clientY, e.timeStamp)
-          }
           state.lastX = t.clientX
           state.lastY = t.clientY
         }
@@ -914,6 +886,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (state.emitRaf) {
         cancelAnimationFrame(state.emitRaf)
         state.emitRaf = 0
+      }
+      const cancelled = e.type === 'touchcancel'
+      if (cancelled && !state.selecting && !state.handle) {
+        state.armed = false
+        state.panning = false
+        return
       }
       if (state.selecting || state.handle) {
         emitDocSelection(doc)
@@ -933,6 +911,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       if (state.armed) {
         state.armed = false
+        if (cancelled) return
+        doc.documentElement.classList.add('lg-selecting')
         if (selectWordAt(doc, state.x, state.y)) {
           const sel = doc.getSelection()
           if (sel?.rangeCount) {
@@ -944,6 +924,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           clearSelHighlight(doc)
           doc.documentElement.classList.remove('lg-custom-sel')
           emitDocSelection(doc)
+        } else {
+          doc.documentElement.classList.remove('lg-selecting')
         }
         return
       }
@@ -1212,6 +1194,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!view?.renderer) return
       for (const { doc } of view.renderer.getContents()) {
         if (!doc) continue
+        doc.documentElement.classList.remove('lg-selecting')
         clearHandles(doc)
         doc.getSelection()?.removeAllRanges()
       }
@@ -1574,8 +1557,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         return
       }
       if (isScrollMode()) {
-        e.preventDefault()
-        panChapter(e.deltaY * 1.35)
+        return
       }
     }
 
