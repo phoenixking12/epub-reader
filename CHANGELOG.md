@@ -2,6 +2,26 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.0 — 2026-09-13
+
+Same Android id as 4.0.0. This APK replaces 4.0.3 and keeps the library.
+
+### Added
+
+- **Audiobooks** tab in the library, with a horizontal stack of discs; **+ Add** puts files on the open tab
+- Cover menu can **Move to audiobooks** or **Move to books**
+
+### Changed
+
+- Bookshelf is one horizontal row instead of stacked shelves
+
+### Fixed
+
+- Fast vertical scrolling no longer turns the page or jumps chapter
+- Horizontal swipe turns the page from empty space, not only from text or images
+- Opening the reading bar insets the page at the bottom as well as the top, so the last lines are not clipped
+- Book default keeps more of the EPUB’s own typeface, padding, and heading layout
+
 ## 4.0.3 — 2026-09-13
 
 Same Android id as 4.0.0. This APK replaces 4.0.2 and keeps the library.

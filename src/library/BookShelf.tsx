@@ -49,12 +49,6 @@ function shortTitle(title: string) {
   return t.length > 36 ? `${t.slice(0, 34)}…` : t || 'Untitled'
 }
 
-function rowsOf<T>(items: T[], size: number) {
-  const rows: T[][] = []
-  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size))
-  return rows.length ? rows : [[]]
-}
-
 function useCoverUrl(cover: Blob | null, id: string) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
@@ -109,7 +103,6 @@ function Bookend({ side }: { side: 'left' | 'right' }) {
 }
 
 export function BookShelf({ books, onOpen }: Props) {
-  const rows = rowsOf(books, 8)
   return (
     <section className="shelf-bay" aria-label="Bookshelf">
       <div className="shelf-hood">
@@ -126,22 +119,77 @@ export function BookShelf({ books, onOpen }: Props) {
         </div>
         <div className="case-body">
           <div className="case-lamp" aria-hidden />
-          {rows.map((row, r) => (
-            <div key={r} className="case-tier">
-              <div className="shelf-row">
-                <Bookend side="left" />
-                {row.length === 0 ? (
-                  <p className="shelf-empty">Add an EPUB and a bound spine will take this place.</p>
-                ) : (
-                  row.map((book, i) => <Tome key={book.id} book={book} onOpen={onOpen} index={r * 8 + i} />)
-                )}
-                <Bookend side="right" />
-              </div>
-              <div className="shelf-plank" />
+          <div className="case-tier">
+            <div className="shelf-row">
+              <Bookend side="left" />
+              {books.length === 0 ? (
+                <p className="shelf-empty">Add an EPUB and a bound spine will take this place.</p>
+              ) : (
+                books.map((book, i) => <Tome key={book.id} book={book} onOpen={onOpen} index={i} />)
+              )}
+              <Bookend side="right" />
             </div>
-          ))}
+            <div className="shelf-plank" />
+          </div>
         </div>
         <div className="case-base" />
+      </div>
+    </section>
+  )
+}
+
+function discLook(book: BookRecord) {
+  const h = hashOf(book.id)
+  return {
+    color: LEATHER[h % LEATHER.length],
+    ring: h % 2 === 0 ? '#d6d3d1' : '#a8a29e',
+  }
+}
+
+function Disc({ book, onOpen, index }: { book: BookRecord; onOpen: (id: string) => void; index: number }) {
+  const look = useMemo(() => discLook(book), [book])
+  const cover = useCoverUrl(book.cover, book.id)
+  return (
+    <button
+      type="button"
+      className="disc"
+      style={{
+        backgroundColor: look.color,
+        animationDelay: `${Math.min(index, 16) * 45}ms`,
+        zIndex: index + 1,
+        ['--ring' as string]: look.ring,
+        backgroundImage: cover
+          ? `radial-gradient(circle at 50% 50%, transparent 11%, rgba(0,0,0,0.35) 12%, transparent 13%), url(${cover})`
+          : undefined,
+      }}
+      title={`${book.title}${book.authors[0] ? ` — ${book.authors[0]}` : ''}`}
+      onClick={() => onOpen(book.id)}
+    >
+      <span className="disc-grooves" aria-hidden />
+      <span className="disc-hole" aria-hidden />
+    </button>
+  )
+}
+
+export function AudioStack({ books, onOpen }: Props) {
+  return (
+    <section className="audio-bay" aria-label="Audiobooks">
+      <div className="shelf-hood">
+        <p className="shelf-kicker">The discs</p>
+        <p className="shelf-count">
+          {books.length
+            ? `${books.length} ${books.length === 1 ? 'audiobook' : 'audiobooks'}`
+            : 'A crate, and no records yet'}
+        </p>
+      </div>
+      <div className="disc-case">
+        <div className="disc-row">
+          {books.length === 0 ? (
+            <p className="shelf-empty">Add an EPUB here and a disc will take this place.</p>
+          ) : (
+            books.map((book, i) => <Disc key={book.id} book={book} onOpen={onOpen} index={i} />)
+          )}
+        </div>
       </div>
     </section>
   )

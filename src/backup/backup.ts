@@ -70,6 +70,7 @@ export async function importLibraryBackup(payload: BackupPayload, mode: 'merge' 
     const { coverBase64, ...rest } = book
     await db.books.put({
       ...rest,
+      shelf: rest.shelf === 'audiobooks' ? 'audiobooks' : 'books',
       cover: coverBase64 ? dataUrlToBlob(coverBase64) : null,
     })
   }

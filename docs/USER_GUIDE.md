@@ -5,8 +5,9 @@ LoreGuard is an offline EPUB reader. Books you add are copied into the app. Read
 ## Library
 
 - **+ Add** copies EPUB files or a whole folder into the app. **Scan phone** (Android) looks through storage for every `.epub` and copies the ones that are not already in the library. The first scan asks for all-files access.
-- The shelf at the top shows one spine for every book, with the same titles as the grid below.
-- The **⋮** menu on a cover pins a book, edits labels, deletes it, or (on Android) adds a home-screen shortcut.
+- **Books** and **Audiobooks** are separate lists. Add while that tab is open, or use **⋮ → Move to audiobooks** / **Move to books**.
+- The shelf at the top is one row you can scroll sideways. Audiobooks use a stack of discs instead.
+- The **⋮** menu on a cover pins a title, edits labels, moves it between shelves, deletes it, or (on Android) adds a home-screen shortcut.
 - **Settings** covers lookup engines, backups, and default highlight color.
 
 ## Reading chrome
@@ -21,7 +22,7 @@ You get the title in the middle, with:
 
 If **Display → Buttons** is on, previous/next page buttons appear as well.
 
-The reading bar sits immediately under the notification icons. The dark bar runs behind the status icons; the buttons sit just below them, with no extra black gap.
+The reading bar sits immediately under the notification icons. The dark bar runs behind the status icons; the buttons sit just below them, with no extra black gap. Opening the bar shrinks the page at **both** the top and the bottom so the last lines stay visible.
 
 The scrubber at the bottom is off unless you turn on **Display → Progress slider**. Percent read always sits at the bottom like a page number: **book %** and **chapter %** while you scroll, or **n / N** in page modes.
 
@@ -31,10 +32,10 @@ In **Menu → Display → Turn pages**:
 
 | Mode | How pages move |
 | --- | --- |
-| Swipe | Swipe left or right |
+| Swipe | Swipe left or right anywhere on the page |
 | Buttons | On-screen ‹ › |
 | Volume | Volume up = previous, volume down = next (Android) |
-| Scroll | Scroll through the chapter; swipe sideways to change chapter |
+| Scroll | Scroll through the chapter; a flat sideways swipe changes chapter |
 
 ## Bookmarks
 

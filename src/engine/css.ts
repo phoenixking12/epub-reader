@@ -19,7 +19,14 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   const faces = publisher ? '' : collectDocumentFontFaces()
   const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
   const bodyFontSize = publisher ? '' : 'font-size: 1em !important;'
+  const htmlFontSize = publisher
+    ? `font-size: ${settings.fontSize}px;`
+    : `font-size: ${settings.fontSize}px !important;`
+  const bodyBox = publisher
+    ? ''
+    : 'margin: 0 !important; padding: 0 !important;'
   const touchAction = settings.pageTurnMode === 'scroll' ? 'pan-y' : 'pan-x pan-y'
+  const overscrollY = settings.pageTurnMode === 'scroll' ? 'contain' : 'auto'
   const readingType = publisher
     ? ''
     : `
@@ -92,16 +99,17 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     html {
       background: ${bg} !important;
       color: ${fg} !important;
-      font-size: ${settings.fontSize}px !important;
+      ${htmlFontSize}
       ${fontFamilyCss}
-      margin: 0 !important;
-      padding: 0 !important;
+      ${publisher ? '' : 'margin: 0 !important; padding: 0 !important;'}
+      min-height: 100%;
+      min-height: 100vh;
       touch-action: ${touchAction};
       -webkit-user-select: none !important;
       user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: auto;
+      overscroll-behavior-y: ${overscrollY};
       ${writing}
     }
     body {
@@ -109,14 +117,15 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       color: inherit !important;
       ${fontFamilyCss}
       ${bodyFontSize}
-      margin: 0 !important;
-      padding: 0 !important;
+      ${bodyBox}
+      min-height: 100%;
+      min-height: 100vh;
       touch-action: ${touchAction};
       -webkit-user-select: none !important;
       user-select: none !important;
       -webkit-touch-callout: none !important;
       -webkit-tap-highlight-color: transparent;
-      overscroll-behavior-y: auto;
+      overscroll-behavior-y: ${overscrollY};
     }
     * {
       -webkit-touch-callout: none !important;

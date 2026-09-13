@@ -27,6 +27,23 @@ export class ReaderDB extends Dexie {
       settings: 'id',
       files: 'id',
     })
+    this.version(2)
+      .stores({
+        books: 'id, title, lastOpenedAt, pinned, addedAt, shelf, *labels',
+        bookmarks: 'id, bookId, order, createdAt',
+        annotations: 'id, bookId, cfiRange, createdAt, color',
+        fonts: 'id, family',
+        settings: 'id',
+        files: 'id',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('books')
+          .toCollection()
+          .modify((row: { shelf?: string }) => {
+            if (row.shelf !== 'audiobooks') row.shelf = 'books'
+          })
+      })
   }
 }
 

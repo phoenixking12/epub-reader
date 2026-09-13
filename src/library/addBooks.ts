@@ -1,6 +1,7 @@
 import { IncomingEpub, type NativeBookItem } from '../native/incoming'
 import { isNative } from '../native/platform'
 import { importEpubFile, importEpubFromStoredPath, isEpubFilename } from './importBook'
+import type { LibraryShelf } from '../types/models'
 
 export interface ImportSummary {
   added: number
@@ -10,13 +11,14 @@ export interface ImportSummary {
 export async function ingestNativeItems(
   items: NativeBookItem[],
   onProgress?: (done: number, total: number) => void,
+  shelf: LibraryShelf = 'books',
 ): Promise<ImportSummary> {
   let added = 0
   let skipped = 0
   for (let i = 0; i < items.length; i++) {
     onProgress?.(i + 1, items.length)
     const item = items[i]
-    const result = await importEpubFromStoredPath(item.id, item.path, item.name)
+    const result = await importEpubFromStoredPath(item.id, item.path, item.name, shelf)
     if (result.skipped) skipped += 1
     else added += 1
   }
@@ -26,6 +28,7 @@ export async function ingestNativeItems(
 export async function addBooksFromFiles(
   files: FileList | File[],
   onProgress?: (done: number, total: number) => void,
+  shelf: LibraryShelf = 'books',
 ): Promise<ImportSummary> {
   const epubs = Array.from(files).filter(
     (file) => isEpubFilename(file.name) || file.type === 'application/epub+zip',
@@ -34,7 +37,7 @@ export async function addBooksFromFiles(
   let skipped = 0
   for (let i = 0; i < epubs.length; i++) {
     onProgress?.(i + 1, epubs.length)
-    const result = await importEpubFile(epubs[i])
+    const result = await importEpubFile(epubs[i], 'copy', shelf)
     if (result.skipped) skipped += 1
     else added += 1
   }

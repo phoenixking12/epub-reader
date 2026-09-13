@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareBooks, groupBooks } from './sort'
+import { compareBooks, groupBooks, booksOnShelf } from './sort'
 import { emptyBook } from '../settings/defaults'
 
 function book(partial: Parameters<typeof emptyBook>[0]) {
@@ -22,5 +22,13 @@ describe('library sort', () => {
     const groups = groupBooks([a, b, c], 'title', 'author')
     expect(groups.map((g) => g.heading)).toEqual(['Ada', 'Unknown author'])
     expect(groups[0].books.map((x) => x.title)).toEqual(['A', 'B'])
+  })
+
+  it('keeps audiobooks off the book shelf', () => {
+    const a = book({ id: '1', fileKey: 'a', title: 'Paper', shelf: 'books' })
+    const b = book({ id: '2', fileKey: 'b', title: 'Tape', shelf: 'audiobooks' })
+    const c = book({ id: '3', fileKey: 'c', title: 'Old' })
+    expect(booksOnShelf([a, b, c], 'books').map((x) => x.title)).toEqual(['Paper', 'Old'])
+    expect(booksOnShelf([a, b, c], 'audiobooks').map((x) => x.title)).toEqual(['Tape'])
   })
 })

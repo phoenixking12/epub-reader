@@ -136,6 +136,7 @@ export function emptyBook(partial: Partial<BookRecord> & Pick<BookRecord, 'id' |
     labels: [],
     pinned: false,
     dir: 'ltr',
+    shelf: 'books',
     ...partial,
   }
 }

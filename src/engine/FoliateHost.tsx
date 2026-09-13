@@ -9,6 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
+import { shouldHorizontalTurn, turnDirection } from './pageTurn'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
 import { usesPublisherFont } from '../settings/defaults'
@@ -289,6 +290,17 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const isScrollMode = () =>
     settingsRef.current.pageTurnMode === 'scroll' || settingsRef.current.flow === 'scrolled'
 
+  const applyHorizontalTurn = (dx: number) => {
+    const next = turnDirection(dx) === 'next'
+    if (isScrollMode()) {
+      if (next) viewRef.current?.renderer?.nextSection?.()
+      else viewRef.current?.renderer?.prevSection?.()
+      return
+    }
+    if (next) void viewRef.current?.goRight()
+    else void viewRef.current?.goLeft()
+  }
+
   const stopFling = () => {
     if (scrollPanRef.current.raf) {
       cancelAnimationFrame(scrollPanRef.current.raf)
@@ -334,8 +346,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const next = { ...settingsRef.current, fontSize: size }
     settingsRef.current = next
     view.renderer.setStyles?.(buildReaderCSS(next))
+    const publisher = usesPublisherFont(next.fontFamily)
     for (const part of view.renderer.getContents()) {
-      part.doc?.documentElement.style.setProperty('font-size', `${size}px`, 'important')
+      if (!part.doc) continue
+      if (publisher) part.doc.documentElement.style.fontSize = `${size}px`
+      else part.doc.documentElement.style.setProperty('font-size', `${size}px`, 'important')
     }
     const margin = view.renderer.getAttribute('margin')
     if (margin) view.renderer.setAttribute('margin', margin)
@@ -770,6 +785,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       anchorNode: null as Node | null,
       anchorOffset: 0,
       emitRaf: 0,
+      farthestDy: 0,
     }
     const emitSoon = () => {
       if (state.emitRaf) return
@@ -813,6 +829,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         state.fromTouch = true
         state.panning = false
         state.armed = false
+        state.farthestDy = 0
         if (isScrollMode()) stopFling()
         window.clearTimeout(state.timer)
         const handleEl = target?.closest?.('.lg-sel-handle') as HTMLElement | null
@@ -866,6 +883,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           state.lastY = t.clientY
           return
         }
+        state.farthestDy = Math.max(state.farthestDy, Math.abs(t.clientY - state.y))
         if (moved > 8) {
           window.clearTimeout(state.timer)
           state.armed = false
@@ -927,21 +945,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       if (
         e.changedTouches.length === 1 &&
-        Date.now() - state.t < 500 &&
+        Date.now() - state.t < 700 &&
         Date.now() - pinchRef.current.lastAt > 350
       ) {
         const t = e.changedTouches[0]
         const dx = t.clientX - state.x
         const dy = t.clientY - state.y
         const mode = settingsRef.current.pageTurnMode
-        const sideways = Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.4
-        if (sideways && (mode === 'swipe' || isScrollMode())) {
+        const scrolled = isScrollMode()
+        if (
+          (mode === 'swipe' || scrolled) &&
+          shouldHorizontalTurn(dx, dy, { scrolled, farthestDy: state.farthestDy })
+        ) {
           e.stopPropagation()
-          if (mode === 'scroll') {
-            if (dx < 0) viewRef.current?.renderer?.nextSection?.()
-            else viewRef.current?.renderer?.prevSection?.()
-          } else if (dx < 0) void viewRef.current?.goRight()
-          else void viewRef.current?.goLeft()
+          applyHorizontalTurn(dx)
           return
         }
         if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
@@ -1045,8 +1062,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           return
         }
         if (isScrollMode()) {
-          e.preventDefault()
-          panChapter(e.deltaY * 1.35)
+          return
         }
       },
       opts,
@@ -1524,22 +1540,59 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const host = rootRef.current
     if (!host) return
 
+    const hostSwipe = { x: 0, y: 0, t: 0, farthestDy: 0, tracking: false, fromHost: false }
+
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length >= 2) {
         e.preventDefault()
+        hostSwipe.tracking = false
         beginPinch(e.touches)
+        return
+      }
+      if (e.touches.length === 1) {
+        const t = e.touches[0]
+        hostSwipe.x = t.clientX
+        hostSwipe.y = t.clientY
+        hostSwipe.t = Date.now()
+        hostSwipe.farthestDy = 0
+        hostSwipe.tracking = true
+        hostSwipe.fromHost = (e.target as HTMLElement).classList.contains('foliate-host')
       }
     }
 
     const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length < 2) return
-      e.preventDefault()
-      if (!pinchRef.current.active) beginPinch(e.touches)
-      movePinch(e.touches)
+      if (e.touches.length >= 2) {
+        e.preventDefault()
+        hostSwipe.tracking = false
+        if (!pinchRef.current.active) beginPinch(e.touches)
+        movePinch(e.touches)
+        return
+      }
+      if (hostSwipe.tracking && e.touches.length === 1) {
+        const t = e.touches[0]
+        hostSwipe.farthestDy = Math.max(hostSwipe.farthestDy, Math.abs(t.clientY - hostSwipe.y))
+      }
     }
 
     const onTouchEnd = (e: TouchEvent) => {
       if (pinchRef.current.active && e.touches.length < 2) endPinch()
+      if (!hostSwipe.tracking || e.changedTouches.length !== 1 || e.touches.length !== 0) {
+        if (e.touches.length === 0) hostSwipe.tracking = false
+        return
+      }
+      hostSwipe.tracking = false
+      if (Date.now() - hostSwipe.t > 700) return
+      if (Date.now() - pinchRef.current.lastAt < 350) return
+      const t = e.changedTouches[0]
+      const dx = t.clientX - hostSwipe.x
+      const dy = t.clientY - hostSwipe.y
+      const mode = settingsRef.current.pageTurnMode
+      const scrolled = isScrollMode()
+      if (mode !== 'swipe' && !scrolled) return
+      if (!scrolled && !hostSwipe.fromHost) return
+      if (shouldHorizontalTurn(dx, dy, { scrolled, farthestDy: hostSwipe.farthestDy })) {
+        applyHorizontalTurn(dx)
+      }
     }
 
     const onWheel = (e: WheelEvent) => {

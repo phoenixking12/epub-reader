@@ -25,6 +25,8 @@ export type LibrarySort = 'title' | 'title-desc' | 'added' | 'added-old' | 'open
 
 export type LibraryGroup = 'none' | 'author'
 
+export type LibraryShelf = 'books' | 'audiobooks'
+
 export interface DisplaySettings {
   theme: ThemeId
   customBg: string
@@ -71,6 +73,7 @@ export interface BookRecord {
   labels: string[]
   pinned: boolean
   dir: 'ltr' | 'rtl'
+  shelf: LibraryShelf
 }
 
 export interface BookmarkRecord {

@@ -1,4 +1,4 @@
-import type { BookRecord, LibraryGroup, LibrarySort } from '../types/models'
+import type { BookRecord, LibraryGroup, LibraryShelf, LibrarySort } from '../types/models'
 
 export function compareBooks(a: BookRecord, b: BookRecord, sort: LibrarySort): number {
   const pinned = Number(b.pinned) - Number(a.pinned)
@@ -48,4 +48,8 @@ export function groupBooks(
       heading,
       books: list.sort((a, b) => compareBooks(a, b, sort)),
     }))
+}
+
+export function booksOnShelf(books: BookRecord[], shelf: LibraryShelf): BookRecord[] {
+  return books.filter((book) => (book.shelf === 'audiobooks' ? 'audiobooks' : 'books') === shelf)
 }

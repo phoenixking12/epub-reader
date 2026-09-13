@@ -3,7 +3,7 @@ import { db } from '../db'
 import { emptyBook, newId } from '../settings/defaults'
 import { deleteBookFile, loadBookFile, saveBookFile } from '../native/files'
 import { formatAuthors, formatLanguageMap, formatTitle } from '../engine/metadata'
-import type { BookRecord } from '../types/models'
+import type { BookRecord, LibraryShelf } from '../types/models'
 
 export async function readEpubMetadata(file: File | Blob) {
   const book = await makeBook(file)
@@ -39,7 +39,12 @@ export async function findDuplicateBook(identifier: string, _title: string): Pro
   return undefined
 }
 
-export async function importEpubFromStoredPath(id: string, path: string, name: string): Promise<{ book: BookRecord; skipped: boolean }> {
+export async function importEpubFromStoredPath(
+  id: string,
+  path: string,
+  name: string,
+  shelf: LibraryShelf = 'books',
+): Promise<{ book: BookRecord; skipped: boolean }> {
   const file = await loadBookFile(`fs:${path}`)
   const meta = await readEpubMetadata(file)
   const existing = await findDuplicateBook(meta.identifier, meta.title)
@@ -60,6 +65,7 @@ export async function importEpubFromStoredPath(id: string, path: string, name: s
     sourceKind: 'copy',
     sourcePath: name,
     dir: meta.dir,
+    shelf,
   })
   await db.books.put(record)
   return { book: record, skipped: false }
@@ -68,6 +74,7 @@ export async function importEpubFromStoredPath(id: string, path: string, name: s
 export async function importEpubFile(
   file: File,
   kind: 'copy' | 'shortcut' = 'copy',
+  shelf: LibraryShelf = 'books',
 ): Promise<{ book: BookRecord; skipped: boolean }> {
   const meta = await readEpubMetadata(file)
   const existing = await findDuplicateBook(meta.identifier, meta.title)
@@ -87,6 +94,7 @@ export async function importEpubFile(
     sourceKind: kind,
     sourcePath: kind === 'shortcut' ? file.name : undefined,
     dir: meta.dir,
+    shelf,
   })
   if (kind === 'shortcut') {
     await db.files.put({ id, blob: file, name: file.name })

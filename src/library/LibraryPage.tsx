@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { db, saveSettings } from '../db'
 import { isNative } from '../native/platform'
 import { DEFAULT_SETTINGS } from '../settings/defaults'
-import type { BookRecord, LibraryGroup, LibrarySort } from '../types/models'
+import type { BookRecord, LibraryGroup, LibraryShelf, LibrarySort } from '../types/models'
 import { importEpubFile, removeBook } from './importBook'
 import { addBooksFromFiles, formatImportSummary, ingestNativeItems, pickNativeBooks } from './addBooks'
-import { groupBooks } from './sort'
-import { BookShelf } from './BookShelf'
+import { booksOnShelf, groupBooks } from './sort'
+import { AudioStack, BookShelf } from './BookShelf'
 
 interface Props {
   onOpen: (id: string) => void
@@ -29,6 +29,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
   const [entered, setEntered] = useState(false)
   const [menuId, setMenuId] = useState<string | null>(null)
   const [labelBook, setLabelBook] = useState<BookRecord | null>(null)
+  const [shelf, setShelf] = useState<LibraryShelf>('books')
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
 
@@ -38,9 +39,13 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
     return [...set].sort()
   }, [books])
 
+  const shelfBooks = useMemo(() => booksOnShelf(books, shelf), [books, shelf])
+  const bookCount = booksOnShelf(books, 'books').length
+  const audioCount = booksOnShelf(books, 'audiobooks').length
+
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase()
-    return books
+    return shelfBooks
       .filter((b) => (label === 'all' ? true : b.labels.includes(label)))
       .filter((b) => {
         if (!query) return true
@@ -50,7 +55,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
           b.labels.join(' ').toLowerCase().includes(query)
         )
       })
-  }, [books, q, label])
+  }, [shelfBooks, q, label])
 
   const sections = useMemo(() => groupBooks(filtered, sort, group), [filtered, sort, group])
 
@@ -65,7 +70,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
     setStatus('')
     setAddOpen(false)
     try {
-      const summary = await addBooksFromFiles(files, (done, total) => setProgress(`Adding ${done}/${total}`))
+      const summary = await addBooksFromFiles(files, (done, total) => setProgress(`Adding ${done}/${total}`), shelf)
       finishImport(summary)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not import EPUB')
@@ -92,7 +97,11 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
         finishImport({ added: 0, skipped: 0 }, true, { scanned: mode === 'scan' })
         return
       }
-      const summary = await ingestNativeItems(picked.items, (done, total) => setProgress(`Adding ${done}/${total}`))
+      const summary = await ingestNativeItems(
+        picked.items,
+        (done, total) => setProgress(`Adding ${done}/${total}`),
+        shelf,
+      )
       finishImport(summary, false, { scanned: mode === 'scan' })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not import EPUB')
@@ -135,13 +144,48 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
           <img src="/logo.png" alt="" className="brand-logo" width={56} height={56} />
           <div>
             <p className="eyebrow">LoreGuard</p>
-            <h1>{books.length ? `${books.length} book${books.length === 1 ? '' : 's'}` : 'Your books'}</h1>
+            <h1>
+              {shelf === 'audiobooks'
+                ? audioCount
+                  ? `${audioCount} audiobook${audioCount === 1 ? '' : 's'}`
+                  : 'Audiobooks'
+                : bookCount
+                  ? `${bookCount} book${bookCount === 1 ? '' : 's'}`
+                  : 'Your books'}
+            </h1>
           </div>
         </div>
         <button className="icon-btn" onClick={onSettings}>
           Settings
         </button>
       </header>
+
+      <div className="lib-shelves" role="tablist" aria-label="Library">
+        <button
+          type="button"
+          role="tab"
+          className="lib-shelf-tab"
+          aria-selected={shelf === 'books'}
+          onClick={(e) => {
+            e.stopPropagation()
+            setShelf('books')
+          }}
+        >
+          Books
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className="lib-shelf-tab"
+          aria-selected={shelf === 'audiobooks'}
+          onClick={(e) => {
+            e.stopPropagation()
+            setShelf('audiobooks')
+          }}
+        >
+          Audiobooks
+        </button>
+      </div>
 
       <div className="lib-tools">
         <input
@@ -186,7 +230,11 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
       {error && <p className="error">{error}</p>}
       {status && <p className="ok">{status}</p>}
 
-      <BookShelf books={filtered} onOpen={onOpen} />
+      {shelf === 'audiobooks' ? (
+        <AudioStack books={filtered} onOpen={onOpen} />
+      ) : (
+        <BookShelf books={filtered} onOpen={onOpen} />
+      )}
 
       {sections.map((section) => (
         <section key={section.heading ?? 'all'} className="author-block">
@@ -214,8 +262,14 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
 
       {filtered.length === 0 && (
         <div className="empty">
-          <p>{books.length ? 'No books match that search.' : 'Add EPUB files or a folder. Books are copied onto the device and read offline.'}</p>
-          {!books.length && (
+          <p>
+            {shelfBooks.length
+              ? 'No titles match that search.'
+              : shelf === 'audiobooks'
+                ? 'Add EPUB files with narration. They are copied onto the device and open in the reader.'
+                : 'Add EPUB files or a folder. Books are copied onto the device and read offline.'}
+          </p>
+          {!shelfBooks.length && shelf === 'books' && (
             <button
               className="chip active"
               disabled={busy}
@@ -224,7 +278,11 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
                 try {
                   const res = await fetch('/sample.epub')
                   const blob = await res.blob()
-                  await importEpubFile(new File([blob], 'sample.epub', { type: 'application/epub+zip' }))
+                  await importEpubFile(
+                    new File([blob], 'sample.epub', { type: 'application/epub+zip' }),
+                    'copy',
+                    'books',
+                  )
                 } catch (e) {
                   setError(e instanceof Error ? e.message : 'Could not load sample')
                 } finally {
@@ -275,14 +333,16 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
         <div className="sheet add-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add books">
           <div className="sheet-handle" />
           <header className="sheet-head">
-            <h2>Add books</h2>
+            <h2>{shelf === 'audiobooks' ? 'Add audiobooks' : 'Add books'}</h2>
             <button className="icon-btn" onClick={() => setAddOpen(false)}>
               Cancel
             </button>
           </header>
           <p className="muted">
             {isNative()
-              ? 'Files and folders are copied into the app. Scan phone looks through storage for every .epub. After that, reading works with no internet.'
+              ? shelf === 'audiobooks'
+                ? 'Files and folders are copied into Audiobooks. Scan phone looks through storage for every .epub.'
+                : 'Files and folders are copied into the app. Scan phone looks through storage for every .epub. After that, reading works with no internet.'
               : 'Choose one or more EPUB files, or a folder that contains them.'}
           </p>
           <div className="action-row">
@@ -330,6 +390,7 @@ function BookCard({
   onEditLabels: () => void
 }) {
   const pct = Math.round(book.progressFraction * 100)
+  const otherShelf = book.shelf === 'audiobooks' ? 'books' : 'audiobooks'
   return (
     <article className={`book-card ${book.pinned ? 'pinned' : ''}`}>
       <button className="cover-btn" onClick={() => onOpen(book.id)}>
@@ -377,6 +438,14 @@ function BookCard({
             {book.pinned ? 'Unpin' : 'Pin to top'}
           </button>
           <button onClick={onEditLabels}>Edit labels</button>
+          <button
+            onClick={() => {
+              void db.books.update(book.id, { shelf: otherShelf })
+              onMenu(null)
+            }}
+          >
+            {otherShelf === 'audiobooks' ? 'Move to audiobooks' : 'Move to books'}
+          </button>
           {isNative() && (
             <button
               onClick={() => {
