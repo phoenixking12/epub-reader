@@ -15,6 +15,7 @@ import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader
 import { usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
+import { annSelector, applyInlineMark, inlineSpanPainted, isInlineMark, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
 
 function applyInlineType(doc: Document, settings: DisplaySettings) {
   const html = doc.documentElement
@@ -125,64 +126,6 @@ function drawAnnotation(
   return [Overlayer.highlight, { color }]
 }
 
-function unwrapAnnSpans(doc: Document, id: string) {
-  doc.querySelectorAll(`[data-lg-ann="${id}"]`).forEach((el) => {
-    const parent = el.parentNode
-    if (!parent) return
-    while (el.firstChild) parent.insertBefore(el.firstChild, el)
-    parent.removeChild(el)
-    if ('normalize' in parent) parent.normalize()
-  })
-}
-
-function isInlineMark(style: AnnotationRecord['style']) {
-  return style === 'textColor' || style === 'bold' || style === 'italic'
-}
-
-function styleInlineSpan(span: HTMLElement, rec: AnnotationRecord) {
-  span.dataset.lgAnn = rec.id
-  span.dataset.lgKind = rec.style
-  span.removeAttribute('style')
-  if (rec.style === 'textColor') span.style.setProperty('color', rec.color, 'important')
-  if (rec.style === 'bold') span.style.setProperty('font-weight', '700', 'important')
-  if (rec.style === 'italic') span.style.setProperty('font-style', 'italic', 'important')
-}
-
-function retargetRange(range: Range, node: Node) {
-  try {
-    range.selectNode(node)
-  } catch {
-    try {
-      range.selectNodeContents(node)
-    } catch {
-      /* detached */
-    }
-  }
-}
-
-function applyTextHighlight(doc: Document, range: Range, rec: AnnotationRecord) {
-  if (!isInlineMark(rec.style)) {
-    unwrapAnnSpans(doc, rec.id)
-    return
-  }
-  const existing = [...doc.querySelectorAll(`[data-lg-ann="${CSS.escape(rec.id)}"]`)]
-  if (existing.length) {
-    for (const el of existing) {
-      if (el instanceof HTMLElement) styleInlineSpan(el, rec)
-    }
-    retargetRange(range, existing[0]!)
-    return
-  }
-  const span = doc.createElement('span')
-  styleInlineSpan(span, rec)
-  try {
-    range.surroundContents(span)
-  } catch {
-    span.append(range.extractContents())
-    range.insertNode(span)
-  }
-  retargetRange(range, span)
-}
 
 function flashArrived(node: Node | Range | null) {
   const el =
@@ -265,6 +208,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   const pinchDocs = useRef(new WeakSet<Document>())
   const selectDocs = useRef(new WeakSet<Document>())
   const prevAnnRef = useRef<AnnotationRecord[]>([])
+  const annTicket = useRef(0)
   const onRelocateRef = useRef(onRelocate)
   const onSelectionRef = useRef(onSelection)
   const onImageRef = useRef(onImage)
@@ -1385,7 +1329,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       }
       const rec = annotationsRef.current.find((a) => a.cfiRange === annotation.value)
       if (!rec) return
-      applyTextHighlight(doc, range, rec)
+      applyInlineMark(doc, range, rec)
       if (isInlineMark(rec.style)) {
         draw(Overlayer.highlight, { color: 'rgba(0,0,0,0)' })
       } else {
@@ -1517,28 +1461,70 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    const ticket = ++annTicket.current
     const prev = prevAnnRef.current
-    const nextById = new Map(annotations.map((a) => [a.id, a]))
-    for (const rec of prev) {
-      const next = nextById.get(rec.id)
-      const gone = !next
-      const moved = Boolean(next && next.cfiRange !== rec.cfiRange)
-      const styleChanged = Boolean(next && next.style !== rec.style)
-      const colorChanged = Boolean(next && next.color !== rec.color)
-      if (!gone && !moved && !styleChanged && !colorChanged) continue
-      void Promise.resolve(view.deleteAnnotation({ value: rec.cfiRange })).catch(() => undefined)
-      if (gone || moved || styleChanged) {
-        if (view.renderer) {
-          for (const { doc } of view.renderer.getContents()) {
+    const nextList = annotations
+    prevAnnRef.current = nextList
+    const docs = () => view.renderer?.getContents().map((part) => part.doc) ?? []
+    for (const rec of nextList) {
+      const prevRec = prev.find((item) => item.id === rec.id)
+      if (!prevRec || prevRec.style !== rec.style || prevRec.color === rec.color || !isInlineMark(rec.style)) continue
+      for (const doc of docs()) {
+        if (!doc) continue
+        for (const el of doc.querySelectorAll(annSelector(rec.id))) {
+          if (el instanceof HTMLElement) styleInlineSpan(el, rec)
+        }
+      }
+    }
+    void (async () => {
+      const nextById = new Map(nextList.map((a) => [a.id, a]))
+      for (const rec of prev) {
+        if (ticket !== annTicket.current) return
+        const next = nextById.get(rec.id)
+        const gone = !next
+        const moved = Boolean(next && next.cfiRange !== rec.cfiRange)
+        const styleChanged = Boolean(next && next.style !== rec.style)
+        const overlayColor = Boolean(
+          next && next.color !== rec.color && next.style === rec.style && !isInlineMark(next.style),
+        )
+        if (!gone && !moved && !styleChanged && !overlayColor) continue
+        await Promise.resolve(view.deleteAnnotation({ value: rec.cfiRange })).catch(() => undefined)
+        if (gone || moved || styleChanged) {
+          for (const doc of docs()) {
             if (doc) unwrapAnnSpans(doc, rec.id)
           }
         }
       }
+      if (ticket !== annTicket.current) return
+      const newest = new Map<string, AnnotationRecord>()
+      for (const rec of nextList) {
+        const prior = newest.get(rec.cfiRange)
+        if (!prior || rec.createdAt >= prior.createdAt) newest.set(rec.cfiRange, rec)
+      }
+      const hidden = nextList.filter((rec) => newest.get(rec.cfiRange)?.id !== rec.id)
+      for (const rec of hidden) {
+        for (const doc of docs()) {
+          if (doc) unwrapAnnSpans(doc, rec.id)
+        }
+      }
+      for (const rec of newest.values()) {
+        if (ticket !== annTicket.current) return
+        const prevRec = prev.find((item) => item.id === rec.id)
+        const inlineColorOnly = Boolean(
+          prevRec &&
+            prevRec.style === rec.style &&
+            prevRec.cfiRange === rec.cfiRange &&
+            prevRec.color !== rec.color &&
+            isInlineMark(rec.style) &&
+            inlineSpanPainted(docs(), rec.id),
+        )
+        if (inlineColorOnly) continue
+        await Promise.resolve(view.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
+      }
+    })()
+    return () => {
+      annTicket.current += 1
     }
-    for (const rec of annotations) {
-      void Promise.resolve(view.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
-    }
-    prevAnnRef.current = annotations
   }, [annotations])
 
   useEffect(() => {

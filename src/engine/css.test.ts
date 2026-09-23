@@ -23,8 +23,15 @@ describe('buildReaderCSS', () => {
   it('recolors font-color marks without a highlight wash', () => {
     expect(css).toMatch(/data-lg-kind="textColor"/)
     expect(css).toMatch(/box-decoration-break: clone/)
-    expect(css).toMatch(/data-lg-kind="textColor"[\s\S]{0,180}background-color: transparent/)
-    expect(css).not.toMatch(/data-lg-kind="textColor"[\s\S]{0,180}background-color: color-mix/)
+    expect(css).toMatch(/--lg-mark-color/)
+    expect(css).toMatch(/data-lg-kind="textColor"\] \*/)
+    expect(css).toMatch(/background-color: transparent !important/)
+    expect(css).not.toMatch(/data-lg-kind="textColor"[\s\S]{0,400}background-color: color-mix/)
+  })
+
+  it('keeps chapter panning available while text is selected', () => {
+    expect(css).toMatch(/html\.lg-selecting/)
+    expect(css).not.toMatch(/html\.lg-selecting\s*\{[^}]*touch-action:\s*none/)
   })
 
   it('keeps arrived and selection-handle rules valid', () => {

@@ -2,6 +2,15 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.2 — 2026-09-23
+
+Same Android id as 4.0.0. This APK replaces 4.1.1 and keeps the library.
+
+### Fixed
+
+- Changing font color again switches to the new color, including a second swatch on the same selection
+- Scrolling keeps working after font color, highlight, or underline
+
 ## 4.1.1 — 2026-09-13
 
 Same Android id as 4.0.0. This APK replaces 4.1.0 and keeps the library.

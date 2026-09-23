@@ -142,9 +142,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       -webkit-user-select: text !important;
       user-select: text !important;
     }
-    html.lg-selecting {
-      touch-action: none;
-    }
     p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, pre, figcaption {
       position: relative !important;
     }
@@ -205,9 +202,12 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       opacity: 1;
       filter: drop-shadow(0 0 2px ${link});
     }
-    span[data-lg-ann][data-lg-kind="textColor"] {
+    span[data-lg-ann][data-lg-kind="textColor"],
+    span[data-lg-ann][data-lg-kind="textColor"] * {
       -webkit-box-decoration-break: clone;
       box-decoration-break: clone;
+      color: var(--lg-mark-color) !important;
+      -webkit-text-fill-color: var(--lg-mark-color) !important;
       background-color: transparent !important;
       background-image: none !important;
     }

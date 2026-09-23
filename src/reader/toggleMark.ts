@@ -14,3 +14,28 @@ export function shouldRemoveColor(
 ) {
   return existing && style === 'textColor' && current.toLowerCase() === next.toLowerCase()
 }
+
+/**
+ * A second swatch on the same selection must update the mark already created,
+ * even when the database query has not returned that row yet.
+ */
+export function markTargetId(input: {
+  pendingId?: string | null
+  selectedId?: string | null
+  cfi?: string
+  annotations: Array<{ id: string; cfiRange: string; createdAt: number }>
+}): string | null {
+  if (input.pendingId) return input.pendingId
+  if (input.selectedId) return input.selectedId
+  const same = input.annotations.filter((a) => input.cfi && a.cfiRange === input.cfi)
+  if (!same.length) return null
+  return [...same].sort((a, b) => b.createdAt - a.createdAt)[0]!.id
+}
+
+export function duplicateMarkIds(
+  keptId: string,
+  cfi: string,
+  annotations: Array<{ id: string; cfiRange: string }>,
+): string[] {
+  return annotations.filter((a) => a.cfiRange === cfi && a.id !== keptId).map((a) => a.id)
+}
