@@ -2,6 +2,25 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.5 — 2026-09-24
+
+Same Android id as 4.0.0. Install this over a 4.1.5 or later build and the library stays. It cannot replace 4.1.4 or earlier: those APKs were signed with a different key.
+
+### Added
+
+- Color wheel keeps the hue and saturation gradient, and adds an intensity slider plus R, G, and B fields
+
+### Changed
+
+- Settings no longer shows the Offline section
+
+### Fixed
+
+- In-app update no longer hits “App not installed as package conflicts with an existing package” on the next release. GitHub was signing every APK with a new debug key, so Android refused to replace the installed app
+- If an update is signed with a different key, LoreGuard explains why and saves `LoreGuard-update.apk` to Downloads instead of opening an installer Android will reject
+
+Builds through 4.1.4 were each signed with a key that was thrown away. Android cannot replace those installs. Export a backup, uninstall LoreGuard, install 4.1.5, and later updates keep the library.
+
 ## 4.1.4 — 2026-09-24
 
 Same Android id as 4.0.0. This APK replaces 4.1.3 and keeps the library.

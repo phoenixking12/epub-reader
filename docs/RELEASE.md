@@ -4,9 +4,9 @@ Keep these three version numbers the same before you tag a build:
 
 | Place | Field | Example |
 | --- | --- | --- |
-| `package.json` | `version` | `4.1.4` |
-| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `4.1.4` / `9` |
-| `android/app/build.gradle` | `versionName` / `versionCode` | `4.1.4` / `9` |
+| `package.json` | `version` | `4.1.5` |
+| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `4.1.5` / `10` |
+| `android/app/build.gradle` | `versionName` / `versionCode` | `4.1.5` / `10` |
 
 `versionCode` must **increase** on every APK you ship after 4.0.0 (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app.
 
@@ -39,17 +39,24 @@ gh repo rename LoreGuard
 5. Tag and push:
 
 ```bash
-git tag v4.1.4
+git tag v4.1.5
 git push origin main --tags
 ```
 
 6. GitHub Actions **LoreGuard APK** runs tests, builds, syncs Capacitor, and uploads the **LoreGuard** artifact. Pushing `main` only stores that artifact on the workflow run.
 7. A tag matching `v*` creates a GitHub Release named **LoreGuard v…** with `LoreGuard.apk`. Without the tag, phones installing from **Releases** still get the previous version.
 
+## Signing
+
+Release APKs are signed with `android/keystore/loreguard-release.keystore` (see `android/keystore.properties`). That file is part of the repo so every GitHub build uses the same certificate.
+
+Do not replace the keystore. Android rejects an update whose certificate does not match the installed app, and the phone shows “App not installed as package conflicts with an existing package.” Through 4.1.4 the workflow ran `assembleDebug` on a fresh runner, so each release had a new debug certificate and in-app update could not replace the installed app.
+
 ## What not to commit
 
 - `dist/`, `dist-apk/`, `node_modules/`
-- `android/local.properties`, keystores, `.env`
+- `android/local.properties`, `.env`
+- Any keystore other than `android/keystore/loreguard-release.keystore`
 
 ## Branding files
 

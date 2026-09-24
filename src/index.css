@@ -661,7 +661,7 @@ select option { background: #1c1917; color: #fafaf9; }
   position: absolute;
   z-index: 8;
   width: min(268px, calc(100vw - 28px));
-  max-height: min(38vh, 260px);
+  max-height: min(62vh, 420px);
   overflow: auto;
   background: #292524;
   color: #fafaf9;
@@ -755,11 +755,30 @@ select option { background: #1c1917; color: #fafaf9; }
   border-color: transparent;
 }
 .sel-btn.ghost { background: #44403c; color: #fafaf9; border-color: #78716c; }
+.color-adjust {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.color-adjust .field { margin: 0; }
+.rgb-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rgb-row input {
+  width: 100%;
+  background: #1c1917;
+  color: #fafaf9;
+  border: 1px solid #78716c;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
 .color-wheel-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 8px 0 4px;
+  margin: 0;
 }
 .color-wheel {
   width: 120px;
