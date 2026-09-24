@@ -35,15 +35,6 @@ export function SettingsPage({ onBack }: Props) {
       </header>
 
       <section>
-        <h2>Offline</h2>
-        <p className="muted">
-          Reading, highlights, bookmarks, and search in the book work with no internet. Books you add
-          are copied into the app, so the original folder can stay on the SD card or be unplugged.
-        </p>
-        <p className="muted">Word lookup and sending a file to another app need a connection.</p>
-      </section>
-
-      <section>
         <h2>Reading</h2>
         <p className="muted">Defaults for every book. You can still change them while reading.</p>
         <label className="check">
