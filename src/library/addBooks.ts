@@ -3,6 +3,10 @@ import { isNative } from '../native/platform'
 import { importEpubFile, importEpubFromStoredPath, isEpubFilename } from './importBook'
 import type { LibraryShelf } from '../types/models'
 
+function shelfNoun(shelf?: LibraryShelf) {
+  return shelf === 'audiobooks' ? 'audiobook' : 'book'
+}
+
 export interface ImportSummary {
   added: number
   skipped: number
@@ -64,15 +68,17 @@ export async function pickNativeBooks(
 export function formatImportSummary(
   summary: ImportSummary,
   emptyFolder: boolean,
-  opts?: { scanned?: boolean; needsPermission?: boolean },
+  opts?: { scanned?: boolean; needsPermission?: boolean; shelf?: LibraryShelf },
 ): string {
+  const noun = shelfNoun(opts?.shelf)
+  const plural = opts?.shelf === 'audiobooks' ? 'audiobooks' : 'books'
   if (opts?.needsPermission) {
     return 'Allow all-files access in Settings, then tap Scan phone again'
   }
-  if (emptyFolder) return opts?.scanned ? 'No EPUB files found on this phone' : 'No EPUB files in that folder'
-  if (!summary.added && !summary.skipped) return 'No EPUB files were added'
+  if (emptyFolder) return opts?.scanned ? `No ${plural} found on this phone` : `No ${plural} in that folder`
+  if (!summary.added && !summary.skipped) return `No ${plural} were added`
   const parts: string[] = []
-  if (summary.added) parts.push(`Added ${summary.added} book${summary.added === 1 ? '' : 's'}`)
+  if (summary.added) parts.push(`Added ${summary.added} ${summary.added === 1 ? noun : plural}`)
   if (summary.skipped) parts.push(`skipped ${summary.skipped} already in the library`)
   return parts.join(', ')
 }

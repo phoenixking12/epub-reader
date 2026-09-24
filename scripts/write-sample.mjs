@@ -37,7 +37,7 @@ const files = {
   'OEBPS/ch1.xhtml': strToU8(`<?xml version="1.0"?>
 <html xmlns="http://www.w3.org/1999/xhtml"><body>
 <h1>Welcome</h1>
-<p>This is a sample EPUB so you can try the reader without finding a file first.</p>
+<p>This is a sample book so you can try the reader without finding a file first.</p>
 <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
 <p>Long-press to select a word, then highlight, underline, recolor, bookmark, or look it up.</p>
 <p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
@@ -59,7 +59,7 @@ const files = {
 <html xmlns="http://www.w3.org/1999/xhtml"><body>
 <h1>Chapter two</h1>
 <h2>A scene heading</h2>
-<p>Swipe or tap the right edge to get here. Progress is saved as an EPUB CFI.</p>
+<p>Swipe or tap the right edge to get here. Your place is saved.</p>
 <h3>A smaller subheading</h3>
 <p>Open Display to try sepia, night, custom colors, brightness, margins, and line length.</p>
 </body></html>`),

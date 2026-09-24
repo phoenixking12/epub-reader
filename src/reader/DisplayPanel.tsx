@@ -49,6 +49,28 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
 
       {section === 'text' && (
         <>
+          <p className="field-label">Formatting</p>
+          <div className="action-row">
+            <button
+              type="button"
+              className={settings.formatting === 'reasily' ? 'chip' : 'chip active'}
+              onClick={() => onChange({ formatting: 'book' })}
+            >
+              Book
+            </button>
+            <button
+              type="button"
+              className={settings.formatting === 'reasily' ? 'chip active' : 'chip'}
+              onClick={() => onChange({ formatting: 'reasily' })}
+            >
+              Reasily
+            </button>
+          </div>
+          <p className="muted tiny">
+            {settings.formatting === 'reasily'
+              ? 'Reasily indents paragraphs, keeps headings modest, and uses Literata when the typeface is still Book default.'
+              : 'Book keeps the file’s own paragraph layout and heading sizes.'}
+          </p>
           <label className="field">
             Typeface
             <select value={settings.fontFamily} onChange={(e) => onChange({ fontFamily: e.target.value })}>
@@ -64,7 +86,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               ))}
             </select>
           </label>
-          <p className="muted tiny">Book default keeps the EPUB’s own fonts, heading sizes, and alignment.</p>
+          <p className="muted tiny">Book default keeps the book’s own fonts, heading sizes, and alignment.</p>
           <label className="field">
             Size {Math.round(settings.fontSize)}
             <input

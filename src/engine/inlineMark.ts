@@ -1,5 +1,13 @@
 import type { AnnotationRecord, AnnotationStyle } from '../types/models'
 
+/** Chapter text lives in an iframe, so the parent window's HTMLElement check rejects it. */
+export function isHTMLElement(node: Node | null | undefined): node is HTMLElement {
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return false
+  const View = node.ownerDocument?.defaultView
+  if (!View?.HTMLElement) return true
+  return node instanceof View.HTMLElement
+}
+
 function cssEscape(value: string) {
   const escape = globalThis.CSS?.escape
   if (escape) return escape(value)
@@ -36,10 +44,58 @@ export function outermostTextColor(range: Range): HTMLElement | null {
   let cur: Element | null = start instanceof Element ? start : start.parentElement
   let found: HTMLElement | null = null
   while (cur) {
-    if (cur instanceof HTMLElement && cur.dataset.lgKind === 'textColor' && cur.dataset.lgAnn) found = cur
+    if (isHTMLElement(cur) && cur.dataset.lgKind === 'textColor' && cur.dataset.lgAnn) found = cur
     cur = cur.parentElement
   }
   return found
+}
+
+/** Font-color wrapper under this range, including one the selection only overlaps. */
+export function textColorSpanForRange(range: Range): HTMLElement | null {
+  const outer = outermostTextColor(range)
+  if (outer) return outer
+  const root = range.commonAncestorContainer
+  const host = root instanceof Element ? root : root.parentElement
+  if (!host) return null
+  const hits: HTMLElement[] = []
+  for (const node of host.querySelectorAll('[data-lg-kind="textColor"]')) {
+    if (!isHTMLElement(node) || !node.dataset.lgAnn) continue
+    try {
+      if (range.intersectsNode(node)) hits.push(node)
+    } catch {
+      /* detached */
+    }
+  }
+  return hits.find((span) => hits.every((other) => span === other || span.contains(other))) ?? hits[0] ?? null
+}
+
+/**
+ * Paint a new font color on the span already wrapping this selection.
+ * Reinserting the node drops a WebView text-color cache that otherwise
+ * keeps the first swatch until the selection is cleared.
+ */
+export function recolorOpenText(range: Range, color: string): HTMLElement | null {
+  let span = textColorSpanForRange(range)
+  if (!span) {
+    const doc = range.commonAncestorContainer.ownerDocument
+    const needle = range.toString().replace(/\s+/g, ' ').trim()
+    if (doc && needle) {
+      span =
+        [...doc.querySelectorAll('[data-lg-kind="textColor"]')].find((el): el is HTMLElement => {
+          if (!isHTMLElement(el) || !el.dataset.lgAnn) return false
+          return (el.textContent ?? '').replace(/\s+/g, ' ').trim() === needle
+        }) ?? null
+    }
+  }
+  if (!span?.dataset.lgAnn) return null
+  styleInlineSpan(span, { id: span.dataset.lgAnn, style: 'textColor', color })
+  const parent = span.parentNode
+  if (parent) {
+    const next = span.nextSibling
+    parent.removeChild(span)
+    parent.insertBefore(span, next)
+  }
+  return span
 }
 
 export function styleInlineSpan(span: HTMLElement, rec: Pick<AnnotationRecord, 'id' | 'style' | 'color'>) {
@@ -51,7 +107,7 @@ export function styleInlineSpan(span: HTMLElement, rec: Pick<AnnotationRecord, '
     span.style.setProperty('color', rec.color, 'important')
     span.style.setProperty('-webkit-text-fill-color', rec.color, 'important')
     for (const child of span.querySelectorAll('*')) {
-      if (!(child instanceof HTMLElement) || child.hasAttribute('data-lg-ann')) continue
+      if (!isHTMLElement(child) || child.hasAttribute('data-lg-ann')) continue
       child.style.setProperty('color', rec.color, 'important')
       child.style.setProperty('-webkit-text-fill-color', rec.color, 'important')
     }
@@ -78,13 +134,13 @@ export function applyInlineMark(doc: Document, range: Range, rec: AnnotationReco
     return
   }
   const own = [...doc.querySelectorAll(annSelector(rec.id))].filter(
-    (el): el is HTMLElement => el instanceof HTMLElement,
+    (el): el is HTMLElement => isHTMLElement(el),
   )
   let host = rec.style === 'textColor' ? (own[0] ?? outermostTextColor(range)) : own[0]
   if (host && rec.style === 'textColor') {
     let cur: Element | null = host.parentElement
     while (cur) {
-      if (cur instanceof HTMLElement && cur.dataset.lgKind === 'textColor' && cur.dataset.lgAnn) host = cur
+      if (isHTMLElement(cur) && cur.dataset.lgKind === 'textColor' && cur.dataset.lgAnn) host = cur
       cur = cur.parentElement
     }
   }

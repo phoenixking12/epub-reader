@@ -20,11 +20,13 @@ export function shouldRemoveColor(
  * even when the database query has not returned that row yet.
  */
 export function markTargetId(input: {
+  paintedId?: string | null
   pendingId?: string | null
   selectedId?: string | null
   cfi?: string
   annotations: Array<{ id: string; cfiRange: string; createdAt: number }>
 }): string | null {
+  if (input.paintedId) return input.paintedId
   if (input.pendingId) return input.pendingId
   if (input.selectedId) return input.selectedId
   const same = input.annotations.filter((a) => input.cfi && a.cfiRange === input.cfi)

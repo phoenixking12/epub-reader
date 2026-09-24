@@ -9,15 +9,81 @@ export function themeColors(settings: DisplaySettings) {
   return THEMES[settings.theme]
 }
 
+const REASILY_FACE = 'Literata, Georgia, serif'
+
+/** Printed-novel rhythm: indented paragraphs, modest headings, even leading. */
+export function reasilyFace(settings: DisplaySettings) {
+  return usesPublisherFont(settings.fontFamily) ? REASILY_FACE : settings.fontFamily
+}
+
+function reasilyLayout(settings: DisplaySettings) {
+  const align = settings.justify ? 'justify' : 'start'
+  const hyphens = settings.hyphenate ? 'auto' : 'manual'
+  return `
+    html, body {
+      font-family: ${reasilyFace(settings)} !important;
+    }
+    p {
+      margin: 0.12em 0 0.2em !important;
+      text-indent: 1.5em !important;
+      line-height: ${settings.lineHeight} !important;
+      text-align: ${align} !important;
+      -webkit-hyphens: ${hyphens} !important;
+      hyphens: ${hyphens} !important;
+      hanging-punctuation: allow-end last;
+      orphans: 2;
+      widows: 2;
+    }
+    h1 + p, h2 + p, h3 + p, h4 + p, h5 + p, h6 + p {
+      text-indent: 0 !important;
+      margin-top: 0.45em !important;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      text-indent: 0 !important;
+      text-align: start !important;
+      font-weight: 650 !important;
+      line-height: 1.22 !important;
+      margin: 1.15em 0 0.4em !important;
+    }
+    h1:first-child, h2:first-child, h3:first-child,
+    h4:first-child, h5:first-child, h6:first-child {
+      margin-top: 0 !important;
+    }
+    h1 { font-size: 1.35em !important; }
+    h2 { font-size: 1.18em !important; }
+    h3, h4, h5, h6 { font-size: 1.05em !important; }
+    p.subtitle, p.subhead, p.subheading, p.heading,
+    div.subtitle, div.subhead, div.subheading {
+      text-indent: 0 !important;
+      text-align: start !important;
+      font-size: 1.12em !important;
+      font-weight: 650 !important;
+      margin: 0.8em 0 0.35em !important;
+    }
+    blockquote, blockquote p {
+      text-indent: 0 !important;
+      margin-left: 1em !important;
+    }
+    li {
+      text-indent: 0 !important;
+      margin: 0.2em 0 !important;
+      line-height: ${settings.lineHeight} !important;
+    }
+  `
+}
+
 export function buildReaderCSS(settings: DisplaySettings): string {
   const { bg, fg, link } = themeColors(settings)
   const night = settings.theme === 'night'
   const writing =
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
-  const publisher = usesPublisherFont(settings.fontFamily)
+  const reasily = settings.formatting === 'reasily'
+  const publisher = !reasily && usesPublisherFont(settings.fontFamily)
   const faces = publisher ? '' : collectDocumentFontFaces()
-  const fontFamilyCss = publisher ? '' : `font-family: ${settings.fontFamily} !important;`
+  const fontFamilyCss = publisher
+    ? ''
+    : `font-family: ${reasily ? reasilyFace(settings) : settings.fontFamily} !important;`
   const bodyFontSize = publisher ? '' : 'font-size: 1em !important;'
   const htmlFontSize = publisher
     ? settings.fontSize === DEFAULT_DISPLAY.fontSize
@@ -38,7 +104,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       height: auto !important;
       ${imgFilter}
     }`
-  const readingType = publisher
+  const readingType = publisher || reasily
     ? ''
     : `
     p, li, blockquote, dd {
@@ -55,7 +121,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     [align="center"] { text-align: center !important; }
     [align="justify"] { text-align: justify !important; }
     `
-  const typeScale = publisher
+  const typeScale = publisher || reasily
     ? ''
     : `
     p:not(.subtitle):not(.subhead):not(.subheading):not(.heading):not(.title),
@@ -206,8 +272,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     span[data-lg-ann][data-lg-kind="textColor"] * {
       -webkit-box-decoration-break: clone;
       box-decoration-break: clone;
-      color: var(--lg-mark-color) !important;
-      -webkit-text-fill-color: var(--lg-mark-color) !important;
       background-color: transparent !important;
       background-image: none !important;
     }
@@ -263,8 +327,14 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     }
     .lg-sel-handle[data-edge="start"]::after { top: 0; }
     .lg-sel-handle[data-edge="end"]::after { bottom: 0; }
+    .-epub-media-overlay-active,
+    .epub-media-overlay-active {
+      background-color: color-mix(in srgb, #ea580c 32%, transparent) !important;
+      border-radius: 2px;
+    }
     ${typeScale}
     ${readingType}
+    ${reasily ? reasilyLayout(settings) : ''}
     ${linkRule}
     pre, code, kbd, samp {
       white-space: pre-wrap !important;

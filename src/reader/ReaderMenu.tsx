@@ -2,23 +2,21 @@ import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
   open: boolean
-  hasMedia: boolean
   onNotes: () => void
   onText: () => void
   onDisplay: () => void
   onFind: () => void
-  onAudio: () => void
+  onListen: () => void
   onClose: () => void
 }
 
 export function ReaderMenu({
   open,
-  hasMedia,
   onNotes,
   onText,
   onDisplay,
   onFind,
-  onAudio,
+  onListen,
   onClose,
 }: Props) {
   const swipe = useSwipeClose(onClose, 'menu')
@@ -50,11 +48,9 @@ export function ReaderMenu({
         <button type="button" role="menuitem" onClick={() => go(onFind)}>
           Find in book
         </button>
-        {hasMedia && (
-          <button type="button" role="menuitem" onClick={() => go(onAudio)}>
-            Listen
-          </button>
-        )}
+        <button type="button" role="menuitem" onClick={() => go(onListen)}>
+          Read and listen
+        </button>
       </div>
     </>
   )

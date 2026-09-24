@@ -19,6 +19,8 @@ import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
 import { duplicateMarkIds, markTargetId } from './toggleMark'
+import { booksOnShelf } from '../library/sort'
+import { ReadAlong } from './ReadAlong'
 import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
@@ -32,6 +34,7 @@ const EMPTY_FONTS: FontRecord[] = []
 
 export function ReaderPage({ bookId, onBack }: Props) {
   const book = useLiveQuery(() => db.books.get(bookId), [bookId])
+  const library = useLiveQuery(() => db.books.toArray()) ?? []
   const bookmarks =
     useLiveQuery(() => db.bookmarks.where('bookId').equals(bookId).sortBy('order'), [bookId]) ?? EMPTY_BOOKMARKS
   const annotations =
@@ -65,6 +68,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [footnote, setFootnote] = useState<{ html: string; href: string } | null>(null)
   const [toc, setToc] = useState<TocNode[]>([])
   const [hasMedia, setHasMedia] = useState(false)
+  const [listenOpen, setListenOpen] = useState(false)
+  const [sectionIndex, setSectionIndex] = useState(0)
   const locationRef = useRef({ cfi: '', quote: '' })
   const [frac, setFrac] = useState(0)
   const [chapterFrac, setChapterFrac] = useState(0)
@@ -75,13 +80,20 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const saveTimer = useRef(0)
   const annotationsRef = useRef(annotations)
   const markChain = useRef(Promise.resolve())
-  const pendingMark = useRef<{ cfi: string; id: string } | null>(null)
+  const pendingMark = useRef<{ text: string; id: string } | null>(null)
   annotationsRef.current = annotations
   const noteSwipe = useSwipeClose(() => setNoteFor(null), 'sheet')
   const footnoteSwipe = useSwipeClose(() => setFootnote(null), 'sheet')
 
   const colors = themeColors(display)
-  const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
+  const audiobooks = useMemo(
+    () =>
+      booksOnShelf(library, 'audiobooks')
+        .filter((item) => item.id !== bookId)
+        .map((item) => ({ id: item.id, title: item.title, fileKey: item.fileKey })),
+    [library, bookId],
+  )
+  const overlayOpen = drawer || displayOpen || searchOpen || listenOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
   const showChrome = chrome && !overlayOpen
   const pageButtons = display.pageTurnMode === 'buttons'
   const autoBright = display.brightnessMode !== 'manual'
@@ -97,7 +109,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
     : undefined
 
   useEffect(() => {
-    if (!selection) pendingMark.current = null
+    if (!selection) {
+      pendingMark.current = null
+      return
+    }
+    if (pendingMark.current && pendingMark.current.text !== selection.text) pendingMark.current = null
   }, [selection])
 
   useLayoutEffect(() => {
@@ -160,6 +176,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         setDisplayOpen(false)
         setSearchOpen(false)
         setMenuOpen(false)
+        setListenOpen(false)
         setSelection(null)
         setNoteFor(null)
         setBookmarkDraft(null)
@@ -243,6 +260,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
             cfi: live?.cfi || cfi,
             quote: live?.quote || locLabel,
           }
+          const nextSection = host.current?.getSectionIndex() ?? 0
+          setSectionIndex((v) => (v === nextSection ? v : nextSection))
           setFrac((v) => (v === fraction ? v : fraction))
           setChapterFrac((v) => (v === sectionFraction ? v : sectionFraction))
           setLoc((v) => (v === locLabel ? v : locLabel))
@@ -371,7 +390,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
       {showChrome && (
         <ReaderMenu
           open={menuOpen}
-          hasMedia={hasMedia}
           onClose={() => setMenuOpen(false)}
           onNotes={() => {
             setDrawerMode('notes')
@@ -386,7 +404,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
             setDisplayOpen(true)
           }}
           onFind={() => setSearchOpen(true)}
-          onAudio={() => host.current?.startMediaOverlay()}
+          onListen={() => setListenOpen(true)}
         />
       )}
 
@@ -414,6 +432,19 @@ export function ReaderPage({ bookId, onBack }: Props) {
           setNoteFor(ann)
           setNoteText(ann.note)
         }}
+      />
+
+      <ReadAlong
+        open={listenOpen}
+        bookTitle={book.title}
+        hasMedia={hasMedia}
+        audiobooks={audiobooks}
+        sectionIndex={sectionIndex}
+        onClose={() => setListenOpen(false)}
+        onPlayHere={() => host.current?.startMediaOverlay()}
+        onPauseHere={() => host.current?.pauseMediaOverlay()}
+        onResumeHere={() => host.current?.resumeMediaOverlay()}
+        onStopHere={() => host.current?.stopMediaOverlay()}
       />
 
       <DisplayPanel
@@ -467,12 +498,14 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onHighlight={(style, color) => {
           if (!selection) return
           const sel = selection
+          const paintedId = style === 'textColor' ? (host.current?.recolorSelection(color) ?? null) : null
           markChain.current = markChain.current
             .then(async () => {
               const anns = annotationsRef.current
-              const pendingId = pendingMark.current?.cfi === sel.cfi ? pendingMark.current.id : null
+              const pendingId = pendingMark.current?.text === sel.text ? pendingMark.current.id : null
               const kept =
                 markTargetId({
+                  paintedId,
                   pendingId,
                   selectedId: sel.annotationId,
                   cfi: sel.cfi,
@@ -481,15 +514,18 @@ export function ReaderPage({ bookId, onBack }: Props) {
               let id = kept
               if (id) {
                 await db.annotations.update(id, { style, color })
+                const keptRec = anns.find((a) => a.id === id)
                 await Promise.all(
-                  duplicateMarkIds(id, sel.cfi, anns).map((extra) => db.annotations.delete(extra)),
+                  duplicateMarkIds(id, keptRec?.cfiRange ?? sel.cfi, anns).map((extra) =>
+                    db.annotations.delete(extra),
+                  ),
                 )
               } else {
                 const rec = await addAnnotation(sel, style, color)
                 id = rec.id
               }
-              pendingMark.current = { cfi: sel.cfi, id }
-              setSelection((s) => (s && s.cfi === sel.cfi ? { ...s, annotationId: id } : s))
+              pendingMark.current = { text: sel.text, id }
+              setSelection((s) => (s && s.text === sel.text ? { ...s, annotationId: id } : s))
               const current = await getSettings()
               await saveSettings({
                 display: {

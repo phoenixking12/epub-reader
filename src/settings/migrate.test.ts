@@ -36,6 +36,12 @@ describe('migrateDisplay', () => {
     expect(migrateDisplay({ fontFamily: 'Literata, Georgia, serif' }).fontFamily).toBe('Literata, Georgia, serif')
   })
 
+  it('keeps book formatting unless Reasily was chosen', () => {
+    expect(migrateDisplay({}).formatting).toBe('book')
+    expect(migrateDisplay({ formatting: 'book' }).formatting).toBe('book')
+    expect(migrateDisplay({ formatting: 'reasily' }).formatting).toBe('reasily')
+  })
+
   it('keeps the progress slider off unless the reader turned it on', () => {
     expect(migrateDisplay({}).progressSlider).toBe(false)
     expect(migrateDisplay({ progressSlider: true }).progressSlider).toBe(true)

@@ -34,6 +34,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   defaultAnnotationColor: '#facc15',
   invertImagesInNight: false,
   progressSlider: false,
+  formatting: 'book',
 }
 
 export const THEMES: Record<
@@ -117,6 +118,7 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
     brightnessMode: merged.brightnessMode ?? 'auto',
     invertImagesInNight: merged.invertImagesInNight ?? false,
     progressSlider: Boolean(merged.progressSlider),
+    formatting: merged.formatting === 'reasily' ? 'reasily' : 'book',
   }
 }
 
