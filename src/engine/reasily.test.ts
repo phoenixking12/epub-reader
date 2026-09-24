@@ -75,6 +75,16 @@ describe('applyReasilyDocument', () => {
     expect(marked.first).toEqual(['It had all started with Nikaea.', 'But after the Master of Mankind had spoken.'])
   })
 
+  it('keeps a font-color mark when formatting runs again', () => {
+    document.body.innerHTML =
+      '<p>The <span data-lg-ann="a" data-lg-kind="textColor" style="color: rgb(250, 204, 21)">fleet</span> sailed.</p>'
+    applyReasilyDocument(document, true)
+    applyReasilyDocument(document, true)
+    const span = document.querySelector('[data-lg-ann]') as HTMLElement
+    expect(span.textContent).toBe('fleet')
+    expect(span.style.color).toBe('rgb(250, 204, 21)')
+  })
+
   it('removes the novel tags when Reasily is turned off', () => {
     document.body.innerHTML = '<h1 style="text-align: left">Two</h1><p>It had all started with Nikaea.</p>'
     applyReasilyDocument(document, true)

@@ -15,6 +15,7 @@ import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkB
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
 import { cssTextAlign, textAlignOf, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
+import { restoreChapterMarks } from './restoreMarks'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
 import { annSelector, applyInlineMark, inlineSpanPainted, isHTMLElement, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
 
@@ -40,6 +41,16 @@ function applyInlineType(doc: Document, settings: DisplaySettings) {
   }
   html.style.setProperty('font-family', settings.fontFamily, 'important')
   body?.style.setProperty('font-family', settings.fontFamily, 'important')
+}
+
+function sectionIndexOf(view: View, cfi: string) {
+  if (!cfi) return null
+  try {
+    const resolved = view.resolveNavigation(cfi) as { index?: number } | undefined
+    return typeof resolved?.index === 'number' ? resolved.index : null
+  } catch {
+    return null
+  }
 }
 
 function paintReaderDocument(doc: Document, settings: DisplaySettings) {
@@ -1347,7 +1358,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     const onLoad = (e: Event) => {
-      const { doc } = (e as CustomEvent).detail as { doc: Document; index: number }
+      const { doc, index } = (e as CustomEvent).detail as { doc: Document; index: number }
       doc.addEventListener('selectionchange', () => {
         if (hidingNative.current.has(doc) || liveSelectDocs.current.has(doc) || ignoreSelRef.current) return
         if (scrollPanRef.current.active) return
@@ -1371,6 +1382,11 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const colors = themeColors(settingsRef.current)
       doc.documentElement.style.background = colors.bg
       paintReaderDocument(doc, settingsRef.current)
+      // Chapter navigation builds a new iframe from the book file, so marks
+      // have to be drawn again. Do it before column layout, while this
+      // document is already parsed and before bookmark buttons are inserted.
+      restoreChapterMarks(doc, index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
+      paintParagraphMarks()
       bindPinchToDocument(doc)
       bindTextSelection(doc)
     }
@@ -1429,7 +1445,18 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     }
 
     const onCreateOverlay = () => {
-      paintAnnotations()
+      // Emitted from inside #createOverlayer, before attach() stores the
+      // overlayer. Underlines and highlights need that overlayer, so paint
+      // them on the next turn. Font color is also applied here in case the
+      // load handler ran before the mark list was ready.
+      queueMicrotask(() => {
+        for (const part of view.renderer?.getContents() ?? []) {
+          if (!part.doc) continue
+          restoreChapterMarks(part.doc, part.index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
+        }
+        paintAnnotations()
+        paintParagraphMarks()
+      })
     }
 
     const onDraw = (e: Event) => {
@@ -1579,7 +1606,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     applyRendererLayout(view.renderer, settingsRef.current)
     view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
+      if (!part.doc) continue
+      paintReaderDocument(part.doc, settingsRef.current)
+      restoreChapterMarks(part.doc, part.index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
     }
   }, [settingsKey])
 

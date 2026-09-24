@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as CFI from 'foliate-js/epubcfi.js'
-import { cfiIgnoreNode } from './cfiIgnore'
+import { cfiIgnoreNode, rangeFromCfi } from './cfiIgnore'
 
 describe('cfiIgnoreNode', () => {
   it('round-trips a CFI through an annotation wrapper', () => {
@@ -22,6 +22,34 @@ describe('cfiIgnoreNode', () => {
     const parsed = CFI.parse(cfi)
     const restored = CFI.toRange(doc, parsed, cfiIgnoreNode)
     expect(restored.toString()).toBe('Hello')
+  })
+
+  it('skips annotation wrappers from another document realm', () => {
+    const node = {
+      nodeType: Node.ELEMENT_NODE,
+      hasAttribute: (name: string) => name === 'data-lg-ann',
+      classList: { contains: () => false },
+    }
+    expect(node instanceof Element).toBe(false)
+    expect(cfiIgnoreNode(node as unknown as Node)).toBe(NodeFilter.FILTER_SKIP)
+  })
+
+  it('resolves a wrapped selection on a chapter that was loaded clean', () => {
+    const marked = document.implementation.createHTMLDocument('t')
+    marked.body.innerHTML = '<p id="p">Hello world</p>'
+    const p = marked.getElementById('p')!
+    const span = marked.createElement('span')
+    span.setAttribute('data-lg-ann', 'abc')
+    span.textContent = 'Hello'
+    p.replaceChildren(span, marked.createTextNode(' world'))
+    const inside = marked.createRange()
+    inside.setStart(span.firstChild!, 0)
+    inside.setEnd(span.firstChild!, 5)
+    const cfi = CFI.joinIndir('epubcfi(/6/8)', CFI.fromRange(inside, cfiIgnoreNode))
+
+    const clean = document.implementation.createHTMLDocument('t')
+    clean.body.innerHTML = '<p id="p">Hello world</p>'
+    expect(rangeFromCfi(clean, cfi).toString()).toBe('Hello')
   })
 
   it('ignores paragraph bookmark buttons', () => {
