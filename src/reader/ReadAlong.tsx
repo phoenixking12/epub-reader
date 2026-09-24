@@ -24,6 +24,13 @@ interface Props {
 
 type Source = { kind: 'here' } | { kind: 'other'; id: string; title: string }
 
+/** A tap has to start some audio immediately, or a later narration clip can stay silent. */
+function unlockAudio() {
+  const audio = new Audio()
+  audio.muted = true
+  void audio.play().then(() => audio.pause()).catch(() => undefined)
+}
+
 export function ReadAlong({
   open,
   bookTitle,
@@ -102,6 +109,7 @@ export function ReadAlong({
   }, [sectionIndex, paused, source?.kind])
 
   const playHere = () => {
+    unlockAudio()
     stopExternal()
     tokenRef.current += 1
     startedAt.current = null
@@ -113,6 +121,7 @@ export function ReadAlong({
   }
 
   const playOther = async (book: AudioBook) => {
+    unlockAudio()
     const token = ++tokenRef.current
     onStopHere()
     stopExternal()
