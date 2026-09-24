@@ -1,3 +1,3 @@
 export const APP_NAME = 'LoreGuard'
-export const APP_VERSION = '4.1.5'
-export const APP_BUILD = 10
+export const APP_VERSION = '5.0.0'
+export const APP_BUILD = 11

@@ -7,6 +7,7 @@ import type {
   FontRecord,
   PageTurnMode,
   SettingsRecord,
+  TextAlign,
 } from '../types/models'
 
 export const DEFAULT_DISPLAY: DisplaySettings = {
@@ -21,6 +22,7 @@ export const DEFAULT_DISPLAY: DisplaySettings = {
   maxInlineSize: 1200,
   gap: 2,
   justify: true,
+  textAlign: 'justify',
   hyphenate: true,
   flow: 'paginated',
   pageTurnMode: 'swipe',
@@ -91,6 +93,22 @@ export function flowForPageTurn(mode: PageTurnMode): DisplaySettings['flow'] {
   return mode === 'scroll' ? 'scrolled' : 'paginated'
 }
 
+export function textAlignOf(display?: Partial<DisplaySettings> | null): TextAlign {
+  if (
+    display?.textAlign === 'left' ||
+    display?.textAlign === 'center' ||
+    display?.textAlign === 'right' ||
+    display?.textAlign === 'justify'
+  ) {
+    return display.textAlign
+  }
+  return display?.justify === false ? 'left' : 'justify'
+}
+
+export function cssTextAlign(align: TextAlign): 'left' | 'center' | 'right' | 'justify' {
+  return align
+}
+
 export function migrateDisplay(display?: Partial<DisplaySettings> | null): DisplaySettings {
   const merged = { ...DEFAULT_DISPLAY, ...display }
   const pageTurnMode: PageTurnMode =
@@ -119,6 +137,8 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
     invertImagesInNight: merged.invertImagesInNight ?? false,
     progressSlider: Boolean(merged.progressSlider),
     formatting: merged.formatting === 'reasily' ? 'reasily' : 'book',
+    textAlign: textAlignOf(display),
+    justify: textAlignOf(display) === 'justify',
   }
 }
 

@@ -17,6 +17,8 @@ export type ThemeId = 'day' | 'sepia' | 'night' | 'custom'
 
 export type JustifyMode = 'justify' | 'start'
 
+export type TextAlign = 'left' | 'center' | 'right' | 'justify'
+
 export type WebSearchEngine = 'wiktionary' | 'google' | 'duckduckgo'
 
 export type FootnotePosition = 'popup' | 'bottom' | 'follow'
@@ -42,6 +44,7 @@ export interface DisplaySettings {
   maxInlineSize: number
   gap: number
   justify: boolean
+  textAlign: TextAlign
   hyphenate: boolean
   flow: ReaderFlow
   pageTurnMode: PageTurnMode

@@ -36,6 +36,12 @@ describe('migrateDisplay', () => {
     expect(migrateDisplay({ fontFamily: 'Literata, Georgia, serif' }).fontFamily).toBe('Literata, Georgia, serif')
   })
 
+  it('keeps justify as the alignment unless one was saved', () => {
+    expect(migrateDisplay({}).textAlign).toBe('justify')
+    expect(migrateDisplay({ justify: false }).textAlign).toBe('left')
+    expect(migrateDisplay({ textAlign: 'center', justify: true }).textAlign).toBe('center')
+  })
+
   it('keeps book formatting unless Reasily was chosen', () => {
     expect(migrateDisplay({}).formatting).toBe('book')
     expect(migrateDisplay({ formatting: 'book' }).formatting).toBe('book')

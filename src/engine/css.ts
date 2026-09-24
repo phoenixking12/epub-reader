@@ -1,4 +1,4 @@
-import { THEMES, flowForPageTurn, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
+import { THEMES, cssTextAlign, flowForPageTurn, textAlignOf, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import type { DisplaySettings } from '../types/models'
 import { collectDocumentFontFaces } from './fontFaces'
 
@@ -10,12 +10,14 @@ export function themeColors(settings: DisplaySettings) {
 }
 
 function reasilyLayout(settings: DisplaySettings) {
-  const align = settings.justify ? 'justify' : 'start'
+  const align = cssTextAlign(textAlignOf(settings))
   const hyphens = settings.hyphenate ? 'auto' : 'manual'
-  const face = usesPublisherFont(settings.fontFamily) ? '' : `font-family: ${settings.fontFamily} !important;`
+  const face = usesPublisherFont(settings.fontFamily)
+    ? 'font-family: inherit !important;'
+    : `font-family: ${settings.fontFamily} !important;`
   return `
     html, body {
-      ${face}
+      ${usesPublisherFont(settings.fontFamily) ? '' : face}
       letter-spacing: normal !important;
       word-spacing: normal !important;
     }
@@ -24,42 +26,36 @@ function reasilyLayout(settings: DisplaySettings) {
       word-spacing: normal !important;
       text-justify: auto !important;
     }
-    .lg-reasily-chapter {
+    .lg-reasily-chapter, .lg-reasily-scene {
       display: block !important;
+      ${face}
       text-align: center !important;
       text-indent: 0 !important;
-      font-size: 2.05em !important;
-      font-weight: 500 !important;
-      line-height: 1.15 !important;
-      letter-spacing: 0.04em !important;
-      margin: 0.15em 0 0.85em !important;
+      font-weight: 700 !important;
+      font-synthesis: weight !important;
+      line-height: ${settings.lineHeight} !important;
+      letter-spacing: normal !important;
+      margin: 0 !important;
       padding: 0 !important;
       hyphens: manual !important;
       -webkit-hyphens: manual !important;
     }
+    .lg-reasily-chapter {
+      font-size: 1.35em !important;
+    }
     .lg-reasily-scene {
-      display: block !important;
-      text-align: center !important;
-      text-indent: 0 !important;
       font-size: 1.15em !important;
-      font-weight: 700 !important;
-      line-height: 1.3 !important;
-      letter-spacing: normal !important;
-      margin: 0.35em 0 !important;
-      padding: 0 !important;
-      hyphens: manual !important;
-      -webkit-hyphens: manual !important;
     }
     .lg-reasily-body {
       display: block !important;
+      ${face}
       text-align: ${align} !important;
       text-indent: 1.5em !important;
       font-size: 1em !important;
       font-weight: 400 !important;
+      font-synthesis: weight !important;
       line-height: ${settings.lineHeight} !important;
-      margin: 0.95em 0 0 !important;
-      margin-left: 0 !important;
-      margin-right: 0 !important;
+      margin: 0 !important;
       padding: 0 !important;
       letter-spacing: normal !important;
       word-spacing: normal !important;
@@ -74,6 +70,7 @@ function reasilyLayout(settings: DisplaySettings) {
       letter-spacing: inherit !important;
       word-spacing: inherit !important;
       font-size: inherit !important;
+      font-family: inherit !important;
     }
     blockquote .lg-reasily-body {
       margin-left: 1em !important;
@@ -113,12 +110,26 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       height: auto !important;
       ${imgFilter}
     }`
+  const align = cssTextAlign(textAlignOf(settings))
+  const paragraphLayout =
+    publisher && !reasily
+      ? `
+    p, li, blockquote, dd {
+      line-height: ${settings.lineHeight} !important;
+      text-align: ${align} !important;
+      -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
+      hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
+      hanging-punctuation: allow-end last;
+      orphans: 2;
+      widows: 2;
+    }`
+      : ''
   const readingType = publisher || reasily
     ? ''
     : `
     p, li, blockquote, dd {
       line-height: ${settings.lineHeight} !important;
-      text-align: ${settings.justify ? 'justify' : 'start'};
+      text-align: ${align} !important;
       -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
       hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
       hanging-punctuation: allow-end last;
@@ -342,6 +353,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       border-radius: 2px;
     }
     ${typeScale}
+    ${paragraphLayout}
     ${readingType}
     ${reasily ? reasilyLayout(settings) : ''}
     ${linkRule}
