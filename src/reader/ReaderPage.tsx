@@ -18,6 +18,7 @@ import { ProgressScrub } from './ProgressScrub'
 import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
+import { duplicateMarkIds, markTargetId } from './toggleMark'
 import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
@@ -72,6 +73,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [noteFor, setNoteFor] = useState<AnnotationRecord | SelectionInfo | null>(null)
   const [noteText, setNoteText] = useState('')
   const saveTimer = useRef(0)
+  const annotationsRef = useRef(annotations)
+  const markChain = useRef(Promise.resolve())
+  const pendingMark = useRef<{ cfi: string; id: string } | null>(null)
+  annotationsRef.current = annotations
   const noteSwipe = useSwipeClose(() => setNoteFor(null), 'sheet')
   const footnoteSwipe = useSwipeClose(() => setFootnote(null), 'sheet')
 
@@ -90,6 +95,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const selectedAnn = selection?.annotationId
     ? annotations.find((a) => a.id === selection.annotationId)
     : undefined
+
+  useEffect(() => {
+    if (!selection) pendingMark.current = null
+  }, [selection])
 
   useLayoutEffect(() => {
     if (!showChrome) {
@@ -457,22 +466,41 @@ export function ReaderPage({ bookId, onBack }: Props) {
         anchor={selection?.rect}
         onHighlight={(style, color) => {
           if (!selection) return
-          void (async () => {
-            if (selectedAnn) {
-              await db.annotations.update(selectedAnn.id, { style, color })
-            } else {
-              const rec = await addAnnotation(selection, style, color)
-              setSelection((s) => (s ? { ...s, annotationId: rec.id } : s))
-            }
-            await saveSettings({
-              display: {
-                ...settingsRow.display,
-                defaultAnnotationStyle: style,
-                defaultAnnotationColor: color,
-                customHighlightColors: rememberCustomColor(settingsRow.display.customHighlightColors, color),
-              },
+          const sel = selection
+          markChain.current = markChain.current
+            .then(async () => {
+              const anns = annotationsRef.current
+              const pendingId = pendingMark.current?.cfi === sel.cfi ? pendingMark.current.id : null
+              const kept =
+                markTargetId({
+                  pendingId,
+                  selectedId: sel.annotationId,
+                  cfi: sel.cfi,
+                  annotations: anns,
+                }) ?? null
+              let id = kept
+              if (id) {
+                await db.annotations.update(id, { style, color })
+                await Promise.all(
+                  duplicateMarkIds(id, sel.cfi, anns).map((extra) => db.annotations.delete(extra)),
+                )
+              } else {
+                const rec = await addAnnotation(sel, style, color)
+                id = rec.id
+              }
+              pendingMark.current = { cfi: sel.cfi, id }
+              setSelection((s) => (s && s.cfi === sel.cfi ? { ...s, annotationId: id } : s))
+              const current = await getSettings()
+              await saveSettings({
+                display: {
+                  ...current.display,
+                  defaultAnnotationStyle: style,
+                  defaultAnnotationColor: color,
+                  customHighlightColors: rememberCustomColor(current.display.customHighlightColors, color),
+                },
+              })
             })
-          })()
+            .catch(() => undefined)
         }}
         onNote={() => {
           if (selectedAnn) {

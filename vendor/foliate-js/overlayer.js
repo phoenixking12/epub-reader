@@ -1,6 +1,16 @@
 const createSVGElement = tag =>
     document.createElementNS('http://www.w3.org/2000/svg', tag)
 
+// SVG children default to pointer-events: visiblePainted, which overrides
+// pointer-events: none on the parent <svg>. Those rects then sit in an
+// overflow:hidden layer and the chapter stops scrolling under a mark.
+const silencePointer = el => {
+    if (!el || el.nodeType !== 1) return
+    el.setAttribute('pointer-events', 'none')
+    el.style.pointerEvents = 'none'
+    for (const child of el.children) silencePointer(child)
+}
+
 export class Overlayer {
     #svg = createSVGElement('svg')
     #map = new Map()
@@ -10,6 +20,7 @@ export class Overlayer {
             width: '100%', height: '100%',
             pointerEvents: 'none',
         })
+        this.#svg.setAttribute('pointer-events', 'none')
     }
     get element() {
         return this.#svg
@@ -19,6 +30,7 @@ export class Overlayer {
         if (typeof range === 'function') range = range(this.#svg.getRootNode())
         const rects = range.getClientRects()
         const element = draw(rects, options)
+        silencePointer(element)
         this.#svg.append(element)
         this.#map.set(key, { range, draw, options, element, rects })
     }
@@ -33,6 +45,7 @@ export class Overlayer {
             this.#svg.removeChild(element)
             const rects = range.getClientRects()
             const el = draw(rects, options)
+            silencePointer(el)
             this.#svg.append(el)
             obj.element = el
             obj.rects = rects
@@ -70,6 +83,7 @@ export class Overlayer {
             el.setAttribute('width', width)
             g.append(el)
         }
+        silencePointer(g)
         return g
     }
     static strikethrough(rects, options = {}) {
@@ -93,6 +107,7 @@ export class Overlayer {
             el.setAttribute('width', width)
             g.append(el)
         }
+        silencePointer(g)
         return g
     }
     static squiggly(rects, options = {}) {
@@ -119,8 +134,9 @@ export class Overlayer {
             const ls = Array.from({ length: n },
                 (_, i) => `l${inline} ${i % 2 ? block : -block}`).join('')
             el.setAttribute('d', `M${left} ${bottom}${ls}`)
-            g.append(el)
+                g.append(el)
         }
+        silencePointer(g)
         return g
     }
     static highlight(rects, options = {}) {
@@ -137,6 +153,7 @@ export class Overlayer {
             el.setAttribute('width', width)
             g.append(el)
         }
+        silencePointer(g)
         return g
     }
     static outline(rects, options = {}) {
@@ -154,6 +171,7 @@ export class Overlayer {
             el.setAttribute('rx', radius)
             g.append(el)
         }
+        silencePointer(g)
         return g
     }
     // make an exact copy of an image in the overlay
@@ -169,6 +187,7 @@ export class Overlayer {
         image.setAttribute('y', top)
         image.setAttribute('height', height)
         image.setAttribute('width', width)
+        silencePointer(image)
         return image
     }
 }
