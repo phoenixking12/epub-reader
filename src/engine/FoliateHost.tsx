@@ -15,7 +15,7 @@ import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader
 import { usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
-import { annSelector, applyInlineMark, inlineSpanPainted, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
+import { annSelector, applyInlineMark, inlineSpanPainted, isHTMLElement, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
 
 function applyInlineType(doc: Document, settings: DisplaySettings) {
   const html = doc.documentElement
@@ -1406,6 +1406,18 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const rec = annotationsRef.current.find((a) => a.cfiRange === annotation.value)
       if (!rec) return
       applyInlineMark(doc, range, rec)
+      if (isInlineMark(rec.style) && savedRanges.current.has(doc)) {
+        const painted = doc.querySelector(annSelector(rec.id))
+        if (isHTMLElement(painted)) {
+          const next = doc.createRange()
+          try {
+            next.selectNodeContents(painted)
+            savedRanges.current.set(doc, next)
+          } catch {
+            /* detached */
+          }
+        }
+      }
       if (isInlineMark(rec.style)) {
         draw(Overlayer.highlight, { color: 'rgba(0,0,0,0)' })
       } else {
@@ -1548,7 +1560,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       for (const doc of docs()) {
         if (!doc) continue
         for (const el of doc.querySelectorAll(annSelector(rec.id))) {
-          if (!(el instanceof HTMLElement)) continue
+          if (!isHTMLElement(el)) continue
           styleInlineSpan(el, rec)
           if (rec.style === 'textColor') {
             const saved = savedRanges.current.get(doc)

@@ -1,7 +1,9 @@
+import { isHTMLElement } from './inlineMark'
+
 export function annotationWrapFromNode(node: Node | null | undefined): HTMLElement | null {
-  const el = node instanceof Element ? node : node?.parentElement ?? null
+  const el = isHTMLElement(node) ? node : node?.parentElement ?? null
   const wrap = el?.closest?.('[data-lg-ann]')
-  return wrap instanceof HTMLElement && wrap.dataset.lgAnn ? wrap : null
+  return isHTMLElement(wrap) && wrap.dataset.lgAnn ? wrap : null
 }
 
 export function annotationWrapFromRange(range: Range): HTMLElement | null {
@@ -15,7 +17,7 @@ export function annotationWrapFromRange(range: Range): HTMLElement | null {
   if (!host) return start ?? end
   const hits: HTMLElement[] = []
   for (const node of host.querySelectorAll('[data-lg-ann]')) {
-    if (!(node instanceof HTMLElement)) continue
+    if (!isHTMLElement(node)) continue
     try {
       if (range.intersectsNode(node)) hits.push(node)
     } catch {
@@ -33,7 +35,7 @@ export function annotationWrapFromPoint(doc: Document, x: number, y: number, car
   const fromEl = annotationWrapFromNode(hit)
   if (fromEl) return fromEl
   for (const node of doc.querySelectorAll('[data-lg-ann]')) {
-    if (!(node instanceof HTMLElement)) continue
+    if (!isHTMLElement(node)) continue
     for (const box of node.getClientRects()) {
       if (x >= box.left && x <= box.right && y >= box.top && y <= box.bottom) return node
     }
