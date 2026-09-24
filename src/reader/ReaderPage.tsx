@@ -75,7 +75,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const saveTimer = useRef(0)
   const annotationsRef = useRef(annotations)
   const markChain = useRef(Promise.resolve())
-  const pendingMark = useRef<{ cfi: string; id: string } | null>(null)
+  const pendingMark = useRef<{ text: string; id: string } | null>(null)
   annotationsRef.current = annotations
   const noteSwipe = useSwipeClose(() => setNoteFor(null), 'sheet')
   const footnoteSwipe = useSwipeClose(() => setFootnote(null), 'sheet')
@@ -97,7 +97,11 @@ export function ReaderPage({ bookId, onBack }: Props) {
     : undefined
 
   useEffect(() => {
-    if (!selection) pendingMark.current = null
+    if (!selection) {
+      pendingMark.current = null
+      return
+    }
+    if (pendingMark.current && pendingMark.current.text !== selection.text) pendingMark.current = null
   }, [selection])
 
   useLayoutEffect(() => {
@@ -467,12 +471,14 @@ export function ReaderPage({ bookId, onBack }: Props) {
         onHighlight={(style, color) => {
           if (!selection) return
           const sel = selection
+          const paintedId = style === 'textColor' ? (host.current?.recolorSelection(color) ?? null) : null
           markChain.current = markChain.current
             .then(async () => {
               const anns = annotationsRef.current
-              const pendingId = pendingMark.current?.cfi === sel.cfi ? pendingMark.current.id : null
+              const pendingId = pendingMark.current?.text === sel.text ? pendingMark.current.id : null
               const kept =
                 markTargetId({
+                  paintedId,
                   pendingId,
                   selectedId: sel.annotationId,
                   cfi: sel.cfi,
@@ -481,15 +487,18 @@ export function ReaderPage({ bookId, onBack }: Props) {
               let id = kept
               if (id) {
                 await db.annotations.update(id, { style, color })
+                const keptRec = anns.find((a) => a.id === id)
                 await Promise.all(
-                  duplicateMarkIds(id, sel.cfi, anns).map((extra) => db.annotations.delete(extra)),
+                  duplicateMarkIds(id, keptRec?.cfiRange ?? sel.cfi, anns).map((extra) =>
+                    db.annotations.delete(extra),
+                  ),
                 )
               } else {
                 const rec = await addAnnotation(sel, style, color)
                 id = rec.id
               }
-              pendingMark.current = { cfi: sel.cfi, id }
-              setSelection((s) => (s && s.cfi === sel.cfi ? { ...s, annotationId: id } : s))
+              pendingMark.current = { text: sel.text, id }
+              setSelection((s) => (s && s.text === sel.text ? { ...s, annotationId: id } : s))
               const current = await getSettings()
               await saveSettings({
                 display: {

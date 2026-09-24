@@ -9,7 +9,7 @@ export function buildMinimalEpub(opts?: {
   const author = opts?.author ?? 'Public Domain'
   const chapter =
     opts?.chapter ??
-    `<p>This is a sample EPUB so you can try the reader without finding a file first.</p>
+    `<p>This is a sample book so you can try the reader without finding a file first.</p>
      <p>Pinch with two fingers to change the type size. Tap the sides to turn the page, or the center for the toolbar.</p>
      <p>Long-press to select a word, then highlight, underline, recolor, or look it up.</p>
      <p>In Display, choose Scroll if you want to move through a chapter by sliding up and down instead of paging.</p>
@@ -42,7 +42,7 @@ export function buildMinimalEpub(opts?: {
     <dc:title>${title}</dc:title>
     <dc:creator>${author}</dc:creator>
     <dc:language>en</dc:language>
-    <dc:description>Bundled sample for the offline EPUB reader.</dc:description>
+    <dc:description>Bundled sample for the offline reader.</dc:description>
   </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
@@ -80,7 +80,7 @@ export function buildMinimalEpub(opts?: {
   <body>
     <h1>Chapter two</h1>
     <h2>A scene heading</h2>
-    <p>Swipe or tap the right edge to get here. Progress is saved as an EPUB CFI, so it survives font and screen changes.</p>
+    <p>Swipe or tap the right edge to get here. Your place is saved, so it survives font and screen changes.</p>
     <h3>A smaller subheading</h3>
     <p>Open Display to try sepia, night, custom colors, brightness, margins, and line length.</p>
   </body>

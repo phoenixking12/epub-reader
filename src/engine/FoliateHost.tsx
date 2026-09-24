@@ -15,7 +15,7 @@ import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader
 import { usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
-import { annSelector, applyInlineMark, inlineSpanPainted, isInlineMark, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
+import { annSelector, applyInlineMark, inlineSpanPainted, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
 
 function applyInlineType(doc: Document, settings: DisplaySettings) {
   const html = doc.documentElement
@@ -90,6 +90,8 @@ export interface FoliateHandle {
   getSelection: () => SelectionInfo | null
   getLocation: () => { cfi: string; quote: string }
   deselect: () => void
+  /** Paint a new font color on the selection that is already open. Returns that mark's id. */
+  recolorSelection: (color: string) => string | null
   search: (query: string, regex: boolean) => Promise<SearchHit[]>
   clearSearch: () => void
   startMediaOverlay: () => void
@@ -726,6 +728,64 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (painted) hideNativeSelection(doc)
   }
 
+  const showSelectionOnSpan = (doc: Document, span: HTMLElement) => {
+    const next = doc.createRange()
+    try {
+      next.selectNodeContents(span)
+    } catch {
+      return
+    }
+    savedRanges.current.set(doc, next.cloneRange())
+    clearSelHighlight(doc)
+    const painted = paintSelHighlight(doc, next)
+    const box = rangeBox(next)
+    const placeHandle = (edge: 'start' | 'end', x: number, y: number) => {
+      let el = doc.querySelector(`.lg-sel-handle[data-edge="${edge}"]`) as HTMLElement | null
+      if (!el) {
+        el = doc.createElement('div')
+        el.className = 'lg-sel-handle'
+        el.dataset.edge = edge
+        doc.body.append(el)
+      }
+      el.style.left = `${x - 14}px`
+      el.style.top = `${y}px`
+    }
+    placeHandle('start', box.start.left, box.start.top - 14)
+    placeHandle('end', box.end.right, box.end.bottom - 30)
+    doc.documentElement.classList.add('lg-selecting')
+    const paintAgain = () => {
+      clearSelHighlight(doc)
+      paintSelHighlight(doc, next)
+    }
+    if (painted) {
+      hideNativeSelection(doc)
+      doc.defaultView?.requestAnimationFrame(paintAgain)
+      return
+    }
+    const sel = doc.getSelection()
+    if (!sel) return
+    hidingNative.current.add(doc)
+    sel.removeAllRanges()
+    try {
+      sel.addRange(next.cloneRange())
+    } catch {
+      /* detached */
+    }
+    window.setTimeout(() => hidingNative.current.delete(doc), 0)
+    doc.defaultView?.requestAnimationFrame(() => {
+      const again = doc.getSelection()
+      if (!again) return
+      hidingNative.current.add(doc)
+      again.removeAllRanges()
+      try {
+        again.addRange(next.cloneRange())
+      } catch {
+        /* detached */
+      }
+      window.setTimeout(() => hidingNative.current.delete(doc), 0)
+    })
+  }
+
   const bindTextSelection = (doc: Document) => {
     if (selectDocs.current.has(doc)) return
     selectDocs.current.add(doc)
@@ -1171,6 +1231,22 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         doc.getSelection()?.removeAllRanges()
       }
     },
+    recolorSelection: (color: string) => {
+      const view = viewRef.current
+      if (!view?.renderer) return null
+      for (const { doc } of view.renderer.getContents()) {
+        if (!doc) continue
+        const sel = doc.getSelection()
+        const live = sel && sel.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : null
+        const range = live ?? savedRanges.current.get(doc)
+        if (!range) continue
+        const span = recolorOpenText(range, color)
+        if (!span) continue
+        showSelectionOnSpan(doc, span)
+        return span.dataset.lgAnn ?? null
+      }
+      return null
+    },
     search: async (query, regex) => {
       const view = viewRef.current
       if (!view || !query.trim()) return []
@@ -1472,7 +1548,23 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       for (const doc of docs()) {
         if (!doc) continue
         for (const el of doc.querySelectorAll(annSelector(rec.id))) {
-          if (el instanceof HTMLElement) styleInlineSpan(el, rec)
+          if (!(el instanceof HTMLElement)) continue
+          styleInlineSpan(el, rec)
+          if (rec.style === 'textColor') {
+            const saved = savedRanges.current.get(doc)
+            const sel = doc.getSelection()
+            const live = sel && sel.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : null
+            const open = live ?? saved
+            let touches = false
+            if (open) {
+              try {
+                touches = open.intersectsNode(el) || el.contains(open.startContainer)
+              } catch {
+                touches = el.contains(open.startContainer)
+              }
+            }
+            if (touches) showSelectionOnSpan(doc, el)
+          }
         }
       }
     }

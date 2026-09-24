@@ -123,7 +123,7 @@ export function BookShelf({ books, onOpen }: Props) {
             <div className="shelf-row">
               <Bookend side="left" />
               {books.length === 0 ? (
-                <p className="shelf-empty">Add an EPUB and a bound spine will take this place.</p>
+                <p className="shelf-empty">Add a book and a bound spine will take this place.</p>
               ) : (
                 books.map((book, i) => <Tome key={book.id} book={book} onOpen={onOpen} index={i} />)
               )}
@@ -185,7 +185,7 @@ export function AudioStack({ books, onOpen }: Props) {
       <div className="disc-case">
         <div className="disc-row">
           {books.length === 0 ? (
-            <p className="shelf-empty">Add an EPUB here and a disc will take this place.</p>
+            <p className="shelf-empty">Add an audiobook here and a disc will take this place.</p>
           ) : (
             books.map((book, i) => <Disc key={book.id} book={book} onOpen={onOpen} index={i} />)
           )}

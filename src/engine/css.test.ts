@@ -23,9 +23,11 @@ describe('buildReaderCSS', () => {
   it('recolors font-color marks without a highlight wash', () => {
     expect(css).toMatch(/data-lg-kind="textColor"/)
     expect(css).toMatch(/box-decoration-break: clone/)
-    expect(css).toMatch(/--lg-mark-color/)
     expect(css).toMatch(/data-lg-kind="textColor"\] \*/)
     expect(css).toMatch(/background-color: transparent !important/)
+    expect(css).not.toMatch(/color:\s*var\(--lg-mark-color\)/)
+    expect(css).not.toMatch(/-webkit-text-fill-color:\s*var/)
+    expect(css).toMatch(/::highlight\(lg-sel\)\s*\{[^}]*color:\s*inherit/)
     expect(css).not.toMatch(/data-lg-kind="textColor"[\s\S]{0,400}background-color: color-mix/)
   })
 

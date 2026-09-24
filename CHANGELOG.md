@@ -2,6 +2,22 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.3 — 2026-09-24
+
+Same Android id as 4.0.0. This APK replaces 4.1.2 and keeps the library.
+
+### Added
+
+- **Update** on the library and in Settings downloads the latest LoreGuard from GitHub and opens the installer
+
+### Changed
+
+- Empty bookshelf and sample chapter wording says book, not EPUB
+
+### Fixed
+
+- A second font-color swatch updates the letters while the selection stays open
+
 ## 4.1.2 — 2026-09-23
 
 Same Android id as 4.0.0. This APK replaces 4.1.1 and keeps the library.

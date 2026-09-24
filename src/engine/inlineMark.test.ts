@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AnnotationRecord } from '../types/models'
-import { applyInlineMark } from './inlineMark'
+import { applyInlineMark, recolorOpenText } from './inlineMark'
 
 function rec(patch: Partial<AnnotationRecord> = {}): AnnotationRecord {
   return {
@@ -74,5 +74,24 @@ describe('applyInlineMark', () => {
     expect(spans).toHaveLength(1)
     expect(spans[0]!.dataset.lgAnn).toBe('new')
     expect(markColor(spans[0]!)).toBe('#f9a8d4')
+  })
+
+  it('changes the open selection to the next swatch without a new wrapper', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p id="p">Hello world</p>'
+    const p = doc.getElementById('p')!
+    const range = doc.createRange()
+    range.setStart(p.firstChild!, 0)
+    range.setEnd(p.firstChild!, 5)
+    applyInlineMark(doc, range, rec({ id: 'blue', color: '#60a5fa' }))
+
+    const open = doc.createRange()
+    open.selectNodeContents(p.querySelector('[data-lg-ann]')!)
+    const span = recolorOpenText(open, '#facc15')
+
+    expect(span?.dataset.lgAnn).toBe('blue')
+    expect(markColor(span!)).toBe('#facc15')
+    expect(p.querySelectorAll('[data-lg-ann]')).toHaveLength(1)
+    expect(span?.style.getPropertyPriority('color')).toBe('important')
   })
 })

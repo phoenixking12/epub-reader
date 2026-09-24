@@ -206,8 +206,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     span[data-lg-ann][data-lg-kind="textColor"] * {
       -webkit-box-decoration-break: clone;
       box-decoration-break: clone;
-      color: var(--lg-mark-color) !important;
-      -webkit-text-fill-color: var(--lg-mark-color) !important;
       background-color: transparent !important;
       background-image: none !important;
     }

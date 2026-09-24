@@ -56,6 +56,12 @@ img { max-width: 100%; }
   gap: 12px;
   margin-bottom: 18px;
 }
+.lib-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .settings .lib-top {
   justify-content: flex-start;
 }

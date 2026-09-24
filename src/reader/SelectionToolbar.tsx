@@ -56,16 +56,27 @@ export function SelectionToolbar({
   const [wheelOpen, setWheelOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const popRef = useRef<HTMLDivElement>(null)
+  const seededQuote = useRef<string | null>(null)
+  const picked = useRef(false)
   const swipe = useSwipeClose(onClose, 'menu')
   const [pos, setPos] = useState({ top: 0, left: 8 })
 
   useEffect(() => {
-    if (visible) {
-      setColor(defaultColor)
-      setStyle(defaultStyle)
+    if (!visible) {
+      seededQuote.current = null
+      picked.current = false
+      return
+    }
+    const key = quote ?? ''
+    if (seededQuote.current !== key) {
+      seededQuote.current = key
+      picked.current = false
       setWheelOpen(false)
       setMoreOpen(false)
     }
+    if (picked.current) return
+    setColor(defaultColor)
+    setStyle(defaultStyle)
   }, [visible, defaultColor, defaultStyle, quote])
 
   useLayoutEffect(() => {
@@ -94,6 +105,7 @@ export function SelectionToolbar({
   if (!visible) return null
 
   const apply = (nextStyle: AnnotationStyle, nextColor = color) => {
+    picked.current = true
     setStyle(nextStyle)
     setColor(nextColor)
     onHighlight(nextStyle, nextColor)

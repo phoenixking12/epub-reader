@@ -31,6 +31,18 @@ describe('markTargetId', () => {
     expect(markTargetId({ selectedId: 'new', cfi: 'cfi-1', annotations })).toBe('new')
     expect(duplicateMarkIds('new', 'cfi-1', annotations)).toEqual(['old'])
   })
+
+  it('updates the span on screen even when the selection CFI has drifted', () => {
+    expect(
+      markTargetId({
+        paintedId: 'old',
+        pendingId: null,
+        selectedId: undefined,
+        cfi: 'cfi-drifted',
+        annotations,
+      }),
+    ).toBe('old')
+  })
 })
 
 describe('shouldRemoveColor', () => {

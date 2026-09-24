@@ -42,6 +42,54 @@ export function outermostTextColor(range: Range): HTMLElement | null {
   return found
 }
 
+/** Font-color wrapper under this range, including one the selection only overlaps. */
+export function textColorSpanForRange(range: Range): HTMLElement | null {
+  const outer = outermostTextColor(range)
+  if (outer) return outer
+  const root = range.commonAncestorContainer
+  const host = root instanceof Element ? root : root.parentElement
+  if (!host) return null
+  const hits: HTMLElement[] = []
+  for (const node of host.querySelectorAll('[data-lg-kind="textColor"]')) {
+    if (!(node instanceof HTMLElement) || !node.dataset.lgAnn) continue
+    try {
+      if (range.intersectsNode(node)) hits.push(node)
+    } catch {
+      /* detached */
+    }
+  }
+  return hits.find((span) => hits.every((other) => span === other || span.contains(other))) ?? hits[0] ?? null
+}
+
+/**
+ * Paint a new font color on the span already wrapping this selection.
+ * Reinserting the node drops a WebView text-color cache that otherwise
+ * keeps the first swatch until the selection is cleared.
+ */
+export function recolorOpenText(range: Range, color: string): HTMLElement | null {
+  let span = textColorSpanForRange(range)
+  if (!span) {
+    const doc = range.commonAncestorContainer.ownerDocument
+    const needle = range.toString().replace(/\s+/g, ' ').trim()
+    if (doc && needle) {
+      span =
+        [...doc.querySelectorAll('[data-lg-kind="textColor"]')].find((el): el is HTMLElement => {
+          if (!(el instanceof HTMLElement) || !el.dataset.lgAnn) return false
+          return (el.textContent ?? '').replace(/\s+/g, ' ').trim() === needle
+        }) ?? null
+    }
+  }
+  if (!span?.dataset.lgAnn) return null
+  styleInlineSpan(span, { id: span.dataset.lgAnn, style: 'textColor', color })
+  const parent = span.parentNode
+  if (parent) {
+    const next = span.nextSibling
+    parent.removeChild(span)
+    parent.insertBefore(span, next)
+  }
+  return span
+}
+
 export function styleInlineSpan(span: HTMLElement, rec: Pick<AnnotationRecord, 'id' | 'style' | 'color'>) {
   span.dataset.lgAnn = rec.id
   span.dataset.lgKind = rec.style

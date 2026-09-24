@@ -8,7 +8,7 @@ describe('formatImportSummary', () => {
 
   it('says when a scan found no EPUBs', () => {
     expect(formatImportSummary({ added: 0, skipped: 0 }, true, { scanned: true })).toBe(
-      'No EPUB files found on this phone',
+      'No books found on this phone',
     )
   })
 })

@@ -69,8 +69,8 @@ export function formatImportSummary(
   if (opts?.needsPermission) {
     return 'Allow all-files access in Settings, then tap Scan phone again'
   }
-  if (emptyFolder) return opts?.scanned ? 'No EPUB files found on this phone' : 'No EPUB files in that folder'
-  if (!summary.added && !summary.skipped) return 'No EPUB files were added'
+  if (emptyFolder) return opts?.scanned ? 'No books found on this phone' : 'No books in that folder'
+  if (!summary.added && !summary.skipped) return 'No books were added'
   const parts: string[] = []
   if (summary.added) parts.push(`Added ${summary.added} book${summary.added === 1 ? '' : 's'}`)
   if (summary.skipped) parts.push(`skipped ${summary.skipped} already in the library`)

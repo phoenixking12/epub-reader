@@ -7,6 +7,7 @@ import { shareFile } from '../native/share'
 import { rememberCustomColor } from '../settings/colors'
 import type { WebSearchEngine } from '../types/models'
 import { ColorRow } from '../reader/ColorRow'
+import { UpdateAppButton } from './UpdateAppButton'
 import { APP_NAME, APP_VERSION } from '../version'
 
 interface Props {
@@ -102,7 +103,7 @@ export function SettingsPage({ onBack }: Props) {
 
       <section>
         <h2>Backup</h2>
-        <p className="muted">Saves highlights, notes, and bookmarks. EPUB files stay on this device.</p>
+        <p className="muted">Saves highlights, notes, and bookmarks. Book files stay on this device.</p>
         <div className="action-row">
           <button
             className="chip active"
@@ -207,6 +208,12 @@ export function SettingsPage({ onBack }: Props) {
       )}
 
       {msg && <p className="ok">{msg}</p>}
+
+      <section>
+        <h2>Updates</h2>
+        <p className="muted">Download the latest LoreGuard from GitHub and open the installer.</p>
+        <UpdateAppButton />
+      </section>
 
       <p className="muted version-line">
         {APP_NAME} {APP_VERSION}
