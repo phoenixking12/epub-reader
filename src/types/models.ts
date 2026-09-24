@@ -27,6 +27,9 @@ export type LibraryGroup = 'none' | 'author'
 
 export type LibraryShelf = 'books' | 'audiobooks'
 
+/** Book keeps the file’s own formatting. Reasily is a separate novel layout. */
+export type TextFormatting = 'book' | 'reasily'
+
 export interface DisplaySettings {
   theme: ThemeId
   customBg: string
@@ -52,6 +55,7 @@ export interface DisplaySettings {
   defaultAnnotationColor: string
   invertImagesInNight: boolean
   progressSlider: boolean
+  formatting: TextFormatting
 }
 
 export interface BookRecord {

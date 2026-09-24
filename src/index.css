@@ -1257,6 +1257,55 @@ select option { background: #1c1917; color: #fafaf9; }
   pointer-events: none;
 }
 
+.read-along-stage {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.read-along-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(46px + var(--lg-sab));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #1c1917;
+  color: #fafaf9;
+  border: 1px solid #57534e;
+}
+.read-along-bar p {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.read-along-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+.read-along-list .chip {
+  white-space: normal;
+  text-align: left;
+}
+.read-along-sheet .chip.active {
+  align-self: flex-start;
+}
+
 .label-sheet,
 .add-sheet {
   position: fixed;

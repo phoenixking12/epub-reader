@@ -19,6 +19,8 @@ import { ReaderMenu } from './ReaderMenu'
 import { SearchPanel } from './SearchPanel'
 import { SelectionToolbar } from './SelectionToolbar'
 import { duplicateMarkIds, markTargetId } from './toggleMark'
+import { booksOnShelf } from '../library/sort'
+import { ReadAlong } from './ReadAlong'
 import { useSwipeClose } from '../ui/useSwipeClose'
 
 interface Props {
@@ -32,6 +34,7 @@ const EMPTY_FONTS: FontRecord[] = []
 
 export function ReaderPage({ bookId, onBack }: Props) {
   const book = useLiveQuery(() => db.books.get(bookId), [bookId])
+  const library = useLiveQuery(() => db.books.toArray()) ?? []
   const bookmarks =
     useLiveQuery(() => db.bookmarks.where('bookId').equals(bookId).sortBy('order'), [bookId]) ?? EMPTY_BOOKMARKS
   const annotations =
@@ -65,6 +68,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const [footnote, setFootnote] = useState<{ html: string; href: string } | null>(null)
   const [toc, setToc] = useState<TocNode[]>([])
   const [hasMedia, setHasMedia] = useState(false)
+  const [listenOpen, setListenOpen] = useState(false)
+  const [sectionIndex, setSectionIndex] = useState(0)
   const locationRef = useRef({ cfi: '', quote: '' })
   const [frac, setFrac] = useState(0)
   const [chapterFrac, setChapterFrac] = useState(0)
@@ -81,7 +86,14 @@ export function ReaderPage({ bookId, onBack }: Props) {
   const footnoteSwipe = useSwipeClose(() => setFootnote(null), 'sheet')
 
   const colors = themeColors(display)
-  const overlayOpen = drawer || displayOpen || searchOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
+  const audiobooks = useMemo(
+    () =>
+      booksOnShelf(library, 'audiobooks')
+        .filter((item) => item.id !== bookId)
+        .map((item) => ({ id: item.id, title: item.title, fileKey: item.fileKey })),
+    [library, bookId],
+  )
+  const overlayOpen = drawer || displayOpen || searchOpen || listenOpen || Boolean(noteFor) || Boolean(bookmarkDraft)
   const showChrome = chrome && !overlayOpen
   const pageButtons = display.pageTurnMode === 'buttons'
   const autoBright = display.brightnessMode !== 'manual'
@@ -164,6 +176,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
         setDisplayOpen(false)
         setSearchOpen(false)
         setMenuOpen(false)
+        setListenOpen(false)
         setSelection(null)
         setNoteFor(null)
         setBookmarkDraft(null)
@@ -247,6 +260,8 @@ export function ReaderPage({ bookId, onBack }: Props) {
             cfi: live?.cfi || cfi,
             quote: live?.quote || locLabel,
           }
+          const nextSection = host.current?.getSectionIndex() ?? 0
+          setSectionIndex((v) => (v === nextSection ? v : nextSection))
           setFrac((v) => (v === fraction ? v : fraction))
           setChapterFrac((v) => (v === sectionFraction ? v : sectionFraction))
           setLoc((v) => (v === locLabel ? v : locLabel))
@@ -375,7 +390,6 @@ export function ReaderPage({ bookId, onBack }: Props) {
       {showChrome && (
         <ReaderMenu
           open={menuOpen}
-          hasMedia={hasMedia}
           onClose={() => setMenuOpen(false)}
           onNotes={() => {
             setDrawerMode('notes')
@@ -390,7 +404,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
             setDisplayOpen(true)
           }}
           onFind={() => setSearchOpen(true)}
-          onAudio={() => host.current?.startMediaOverlay()}
+          onListen={() => setListenOpen(true)}
         />
       )}
 
@@ -418,6 +432,19 @@ export function ReaderPage({ bookId, onBack }: Props) {
           setNoteFor(ann)
           setNoteText(ann.note)
         }}
+      />
+
+      <ReadAlong
+        open={listenOpen}
+        bookTitle={book.title}
+        hasMedia={hasMedia}
+        audiobooks={audiobooks}
+        sectionIndex={sectionIndex}
+        onClose={() => setListenOpen(false)}
+        onPlayHere={() => host.current?.startMediaOverlay()}
+        onPauseHere={() => host.current?.pauseMediaOverlay()}
+        onResumeHere={() => host.current?.resumeMediaOverlay()}
+        onStopHere={() => host.current?.stopMediaOverlay()}
       />
 
       <DisplayPanel

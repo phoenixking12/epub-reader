@@ -53,7 +53,7 @@ describe('buildReaderCSS', () => {
     expect(css).not.toMatch(/min-height: 100vh/)
   })
 
-    it('does not override the book typeface or sizes when Book default is selected', () => {
+  it('does not override the book typeface or sizes when Book default is selected', () => {
     expect(css).not.toMatch(/font-family: publisher/)
     expect(css).not.toMatch(/font-family: "Source Serif 4"/)
     expect(css).not.toMatch(/h1 \{ font-size: 1\.85em/)
@@ -64,7 +64,23 @@ describe('buildReaderCSS', () => {
     expect(css).not.toMatch(/font-size: 18px/)
     expect(css).not.toMatch(/margin: 0 !important; padding: 0 !important;/)
     expect(css).not.toMatch(/height: auto !important/)
+    expect(css).not.toMatch(/text-indent: 1\.5em/)
     expect(css).toMatch(/user-select: none/)
+  })
+
+  it('uses a novel layout only when Reasily formatting is on', () => {
+    const reasily = buildReaderCSS({ ...DEFAULT_DISPLAY, formatting: 'reasily' })
+    expect(reasily).toMatch(/text-indent: 1\.5em !important/)
+    expect(reasily).toMatch(/font-family: Literata, Georgia, serif !important/)
+    expect(reasily).toMatch(/h1 \{ font-size: 1\.35em !important/)
+    expect(reasily).not.toMatch(/h1 \{ font-size: 1\.85em/)
+    const chosen = buildReaderCSS({
+      ...DEFAULT_DISPLAY,
+      formatting: 'reasily',
+      fontFamily: '"Source Serif 4", Georgia, serif',
+    })
+    expect(chosen).toMatch(/font-family: "Source Serif 4", Georgia, serif !important/)
+    expect(chosen).not.toMatch(/font-family: Literata/)
   })
 
   it('applies a chosen typeface on html and body only', () => {

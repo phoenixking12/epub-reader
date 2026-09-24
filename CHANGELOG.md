@@ -9,10 +9,13 @@ Same Android id as 4.0.0. This APK replaces 4.1.2 and keeps the library.
 ### Added
 
 - **Update** on the library and in Settings downloads the latest LoreGuard from GitHub and opens the installer
+- **Reasily** in Text is a separate novel layout: indented paragraphs and modest headings, while Book keeps the file’s own formatting
+- **Read and listen** plays narration while the book stays on screen, from the book itself or an audiobook on the shelf
 
 ### Changed
 
 - Empty bookshelf and sample chapter wording says book, not EPUB
+- Audiobook shelf, import, and scan messages say audiobook, not EPUB
 
 ### Fixed
 

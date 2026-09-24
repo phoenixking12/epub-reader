@@ -20,7 +20,8 @@ import { annSelector, applyInlineMark, inlineSpanPainted, isHTMLElement, isInlin
 function applyInlineType(doc: Document, settings: DisplaySettings) {
   const html = doc.documentElement
   const body = doc.body
-  if (usesPublisherFont(settings.fontFamily)) {
+  const reasily = settings.formatting === 'reasily'
+  if (!reasily && usesPublisherFont(settings.fontFamily)) {
     html.style.removeProperty('font-family')
     body?.style.removeProperty('font-family')
     if (settings.fontSize === DEFAULT_DISPLAY.fontSize) {
@@ -31,8 +32,9 @@ function applyInlineType(doc: Document, settings: DisplaySettings) {
     return
   }
   html.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-  html.style.setProperty('font-family', settings.fontFamily, 'important')
-  body?.style.setProperty('font-family', settings.fontFamily, 'important')
+  const family = reasily && usesPublisherFont(settings.fontFamily) ? 'Literata, Georgia, serif' : settings.fontFamily
+  html.style.setProperty('font-family', family, 'important')
+  body?.style.setProperty('font-family', family, 'important')
 }
 
 export interface SelectionInfo {
@@ -95,7 +97,11 @@ export interface FoliateHandle {
   search: (query: string, regex: boolean) => Promise<SearchHit[]>
   clearSearch: () => void
   startMediaOverlay: () => void
+  pauseMediaOverlay: () => void
+  resumeMediaOverlay: () => void
+  stopMediaOverlay: () => void
   hasMediaOverlay: () => boolean
+  getSectionIndex: () => number
   getDir: () => 'ltr' | 'rtl'
 }
 
@@ -1289,7 +1295,20 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     startMediaOverlay: () => {
       viewRef.current?.startMediaOverlay()
     },
+    pauseMediaOverlay: () => {
+      viewRef.current?.mediaOverlay?.pause?.()
+    },
+    resumeMediaOverlay: () => {
+      viewRef.current?.mediaOverlay?.resume?.()
+    },
+    stopMediaOverlay: () => {
+      viewRef.current?.mediaOverlay?.stop?.()
+    },
     hasMediaOverlay: () => Boolean(viewRef.current?.mediaOverlay),
+    getSectionIndex: () => {
+      const section = viewRef.current?.lastLocation?.section
+      return typeof section?.current === 'number' ? section.current : 0
+    },
     getDir: () => (viewRef.current?.book.dir === 'rtl' ? 'rtl' : 'ltr'),
   }))
 
@@ -1524,6 +1543,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     settings.gap,
     settings.fontSize,
     settings.fontFamily,
+    settings.formatting,
     settings.lineHeight,
     settings.theme,
     settings.customBg,

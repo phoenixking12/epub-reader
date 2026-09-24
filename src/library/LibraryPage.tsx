@@ -61,8 +61,10 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
   const sections = useMemo(() => groupBooks(filtered, sort, group), [filtered, sort, group])
 
   const finishImport = (summary: { added: number; skipped: number }, empty = false, extra?: { scanned?: boolean; needsPermission?: boolean }) => {
-    setStatus(formatImportSummary(summary, empty, extra))
-    if (!summary.added && !summary.skipped && !empty && !extra?.needsPermission) setError('Only book files are supported')
+    setStatus(formatImportSummary(summary, empty, { ...extra, shelf }))
+    if (!summary.added && !summary.skipped && !empty && !extra?.needsPermission) {
+      setError(shelf === 'audiobooks' ? 'Only audiobook files are supported' : 'Only book files are supported')
+    }
   }
 
   const addFiles = async (files: FileList | File[]) => {
@@ -74,7 +76,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
       const summary = await addBooksFromFiles(files, (done, total) => setProgress(`Adding ${done}/${total}`), shelf)
       finishImport(summary)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not import that book')
+      setError(e instanceof Error ? e.message : shelf === 'audiobooks' ? 'Could not import that audiobook' : 'Could not import that book')
     } finally {
       setBusy(false)
       setProgress('')
@@ -105,7 +107,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
       )
       finishImport(summary, false, { scanned: mode === 'scan' })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not import that book')
+      setError(e instanceof Error ? e.message : shelf === 'audiobooks' ? 'Could not import that audiobook' : 'Could not import that book')
     } finally {
       setBusy(false)
       setProgress('')
@@ -346,7 +348,7 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
         }}
       />
       {addOpen && (
-        <div className="sheet add-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add books">
+        <div className="sheet add-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={shelf === 'audiobooks' ? 'Add audiobooks' : 'Add books'}>
           <div className="sheet-handle" />
           <header className="sheet-head">
             <h2>{shelf === 'audiobooks' ? 'Add audiobooks' : 'Add books'}</h2>
@@ -359,7 +361,9 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
               ? shelf === 'audiobooks'
                 ? 'Files and folders are copied into Audiobooks. Scan phone looks through storage for every audiobook.'
                 : 'Files and folders are copied into the app. Scan phone looks through storage for every book. After that, reading works with no internet.'
-              : 'Choose one or more books, or a folder that contains them.'}
+              : shelf === 'audiobooks'
+                ? 'Choose one or more audiobooks, or a folder that contains them.'
+                : 'Choose one or more books, or a folder that contains them.'}
           </p>
           <div className="action-row">
             <button className="chip active" disabled={busy} onClick={startAddFiles}>

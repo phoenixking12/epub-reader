@@ -74,7 +74,7 @@ public class IncomingEpubPlugin extends Plugin {
         }
         try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
             if (in == null) {
-                call.reject("Could not open EPUB");
+                call.reject("Could not open that file");
                 return;
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -281,7 +281,7 @@ public class IncomingEpubPlugin extends Plugin {
         File dest = new File(dir, id + ".epub");
         try (InputStream in = getContext().getContentResolver().openInputStream(uri);
              OutputStream out = new FileOutputStream(dest)) {
-            if (in == null) throw new Exception("Could not open " + name);
+            if (in == null) throw new Exception("Could not open that file");
             byte[] buf = new byte[8192];
             int n;
             while ((n = in.read(buf)) > 0) {
@@ -446,7 +446,7 @@ public class IncomingEpubPlugin extends Plugin {
         }
         File dest = new File(dir, id + ".epub");
         try (InputStream input = in; OutputStream out = new FileOutputStream(dest)) {
-            if (input == null) throw new Exception("Could not open " + name);
+            if (input == null) throw new Exception("Could not open that file");
             byte[] buf = new byte[8192];
             int n;
             while ((n = input.read(buf)) > 0) {
