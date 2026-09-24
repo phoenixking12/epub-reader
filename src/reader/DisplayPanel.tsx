@@ -68,7 +68,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
           </div>
           <p className="muted tiny">
             {settings.formatting === 'reasily'
-              ? 'Reasily indents paragraphs, keeps headings modest, and uses Literata when the typeface is still Book default.'
+              ? 'Reasily centers the chapter title and scene lines, indents the prose, and keeps this book’s typeface unless you pick one.'
               : 'Book keeps the file’s own paragraph layout and heading sizes.'}
           </p>
           <label className="field">

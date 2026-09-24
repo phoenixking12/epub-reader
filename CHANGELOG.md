@@ -2,6 +2,15 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 4.1.4 — 2026-09-24
+
+Same Android id as 4.0.0. This APK replaces 4.1.3 and keeps the library.
+
+### Changed
+
+- Reasily follows each book: the chapter title and scene lines are centered, the first paragraph is flush, later paragraphs indent, and the book’s own typeface stays unless you pick one
+- Update stays in Settings. The library header no longer has an Update button
+
 ## 4.1.3 — 2026-09-24
 
 Same Android id as 4.0.0. This APK replaces 4.1.2 and keeps the library.
