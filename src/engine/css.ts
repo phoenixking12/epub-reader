@@ -9,65 +9,74 @@ export function themeColors(settings: DisplaySettings) {
   return THEMES[settings.theme]
 }
 
-const REASILY_FACE = 'Literata, Georgia, serif'
-
-/** Printed-novel rhythm: indented paragraphs, modest headings, even leading. */
-export function reasilyFace(settings: DisplaySettings) {
-  return usesPublisherFont(settings.fontFamily) ? REASILY_FACE : settings.fontFamily
-}
-
 function reasilyLayout(settings: DisplaySettings) {
   const align = settings.justify ? 'justify' : 'start'
   const hyphens = settings.hyphenate ? 'auto' : 'manual'
+  const face = usesPublisherFont(settings.fontFamily) ? '' : `font-family: ${settings.fontFamily} !important;`
   return `
     html, body {
-      font-family: ${reasilyFace(settings)} !important;
+      ${face}
+      letter-spacing: normal !important;
+      word-spacing: normal !important;
     }
-    p {
-      margin: 0.12em 0 0.2em !important;
-      text-indent: 1.5em !important;
-      line-height: ${settings.lineHeight} !important;
+    p, div, span, h1, h2, h3, h4, h5, h6, li, blockquote {
+      letter-spacing: normal !important;
+      word-spacing: normal !important;
+      text-justify: auto !important;
+    }
+    .lg-reasily-chapter {
+      display: block !important;
+      text-align: center !important;
+      text-indent: 0 !important;
+      font-size: 2.05em !important;
+      font-weight: 500 !important;
+      line-height: 1.15 !important;
+      letter-spacing: 0.04em !important;
+      margin: 0.15em 0 0.85em !important;
+      padding: 0 !important;
+      hyphens: manual !important;
+      -webkit-hyphens: manual !important;
+    }
+    .lg-reasily-scene {
+      display: block !important;
+      text-align: center !important;
+      text-indent: 0 !important;
+      font-size: 1.15em !important;
+      font-weight: 700 !important;
+      line-height: 1.3 !important;
+      letter-spacing: normal !important;
+      margin: 0.35em 0 !important;
+      padding: 0 !important;
+      hyphens: manual !important;
+      -webkit-hyphens: manual !important;
+    }
+    .lg-reasily-body {
+      display: block !important;
       text-align: ${align} !important;
+      text-indent: 1.5em !important;
+      font-size: 1em !important;
+      font-weight: 400 !important;
+      line-height: ${settings.lineHeight} !important;
+      margin: 0.95em 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding: 0 !important;
+      letter-spacing: normal !important;
+      word-spacing: normal !important;
       -webkit-hyphens: ${hyphens} !important;
       hyphens: ${hyphens} !important;
       hanging-punctuation: allow-end last;
-      orphans: 2;
-      widows: 2;
     }
-    h1 + p, h2 + p, h3 + p, h4 + p, h5 + p, h6 + p {
+    .lg-reasily-body.lg-reasily-first {
       text-indent: 0 !important;
-      margin-top: 0.45em !important;
     }
-    h1, h2, h3, h4, h5, h6 {
-      text-indent: 0 !important;
-      text-align: start !important;
-      font-weight: 650 !important;
-      line-height: 1.22 !important;
-      margin: 1.15em 0 0.4em !important;
+    .lg-reasily-chapter *, .lg-reasily-scene *, .lg-reasily-body * {
+      letter-spacing: inherit !important;
+      word-spacing: inherit !important;
+      font-size: inherit !important;
     }
-    h1:first-child, h2:first-child, h3:first-child,
-    h4:first-child, h5:first-child, h6:first-child {
-      margin-top: 0 !important;
-    }
-    h1 { font-size: 1.35em !important; }
-    h2 { font-size: 1.18em !important; }
-    h3, h4, h5, h6 { font-size: 1.05em !important; }
-    p.subtitle, p.subhead, p.subheading, p.heading,
-    div.subtitle, div.subhead, div.subheading {
-      text-indent: 0 !important;
-      text-align: start !important;
-      font-size: 1.12em !important;
-      font-weight: 650 !important;
-      margin: 0.8em 0 0.35em !important;
-    }
-    blockquote, blockquote p {
-      text-indent: 0 !important;
+    blockquote .lg-reasily-body {
       margin-left: 1em !important;
-    }
-    li {
-      text-indent: 0 !important;
-      margin: 0.2em 0 !important;
-      line-height: ${settings.lineHeight} !important;
     }
   `
 }
@@ -79,11 +88,11 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     settings.writingMode === 'auto' ? '' : `writing-mode: ${settings.writingMode} !important;`
   const imgFilter = night && settings.invertImagesInNight ? 'filter: invert(1) hue-rotate(180deg);' : ''
   const reasily = settings.formatting === 'reasily'
-  const publisher = !reasily && usesPublisherFont(settings.fontFamily)
-  const faces = publisher ? '' : collectDocumentFontFaces()
-  const fontFamilyCss = publisher
-    ? ''
-    : `font-family: ${reasily ? reasilyFace(settings) : settings.fontFamily} !important;`
+  const keepBookFace = usesPublisherFont(settings.fontFamily)
+  const publisher = !reasily && keepBookFace
+  const faces = publisher || (reasily && keepBookFace) ? '' : collectDocumentFontFaces()
+  const fontFamilyCss =
+    publisher || (reasily && keepBookFace) ? '' : `font-family: ${settings.fontFamily} !important;`
   const bodyFontSize = publisher ? '' : 'font-size: 1em !important;'
   const htmlFontSize = publisher
     ? settings.fontSize === DEFAULT_DISPLAY.fontSize

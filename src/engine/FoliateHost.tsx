@@ -9,6 +9,7 @@ import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
 import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
+import { applyReasilyDocument } from './reasily'
 import { shouldHorizontalTurn, turnDirection } from './pageTurn'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
@@ -32,9 +33,18 @@ function applyInlineType(doc: Document, settings: DisplaySettings) {
     return
   }
   html.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-  const family = reasily && usesPublisherFont(settings.fontFamily) ? 'Literata, Georgia, serif' : settings.fontFamily
-  html.style.setProperty('font-family', family, 'important')
-  body?.style.setProperty('font-family', family, 'important')
+  if (reasily && usesPublisherFont(settings.fontFamily)) {
+    html.style.removeProperty('font-family')
+    body?.style.removeProperty('font-family')
+    return
+  }
+  html.style.setProperty('font-family', settings.fontFamily, 'important')
+  body?.style.setProperty('font-family', settings.fontFamily, 'important')
+}
+
+function paintReaderDocument(doc: Document, settings: DisplaySettings) {
+  applyInlineType(doc, settings)
+  applyReasilyDocument(doc, settings.formatting === 'reasily')
 }
 
 export interface SelectionInfo {
@@ -318,7 +328,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     view.renderer.setStyles?.(buildReaderCSS(next))
     for (const part of view.renderer.getContents()) {
       if (!part.doc) continue
-      applyInlineType(part.doc, next)
+      paintReaderDocument(part.doc, next)
     }
     const margin = view.renderer.getAttribute('margin')
     if (margin) view.renderer.setAttribute('margin', margin)
@@ -1112,7 +1122,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       applyRendererLayout(view.renderer, next)
       view.renderer.setStyles?.(buildReaderCSS(next))
       for (const part of view.renderer.getContents()) {
-        if (part.doc) applyInlineType(part.doc, next)
+        if (part.doc) paintReaderDocument(part.doc, next)
       }
     },
     relayout: () => {
@@ -1354,6 +1364,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       })
       const colors = themeColors(settingsRef.current)
       doc.documentElement.style.background = colors.bg
+      paintReaderDocument(doc, settingsRef.current)
       bindPinchToDocument(doc)
       bindTextSelection(doc)
     }
@@ -1562,7 +1573,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     applyRendererLayout(view.renderer, settingsRef.current)
     view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      if (part.doc) applyInlineType(part.doc, settingsRef.current)
+      if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
     }
   }, [settingsKey])
 

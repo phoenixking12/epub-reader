@@ -70,17 +70,18 @@ describe('buildReaderCSS', () => {
 
   it('uses a novel layout only when Reasily formatting is on', () => {
     const reasily = buildReaderCSS({ ...DEFAULT_DISPLAY, formatting: 'reasily' })
-    expect(reasily).toMatch(/text-indent: 1\.5em !important/)
-    expect(reasily).toMatch(/font-family: Literata, Georgia, serif !important/)
-    expect(reasily).toMatch(/h1 \{ font-size: 1\.35em !important/)
-    expect(reasily).not.toMatch(/h1 \{ font-size: 1\.85em/)
+    expect(reasily).toMatch(/\.lg-reasily-body \{[\s\S]*text-indent: 1\.5em !important/)
+    expect(reasily).toMatch(/\.lg-reasily-chapter \{[\s\S]*text-align: center !important/)
+    expect(reasily).toMatch(/\.lg-reasily-scene \{[\s\S]*font-weight: 700 !important/)
+    expect(reasily).toMatch(/word-spacing: normal !important/)
+    expect(reasily).not.toMatch(/font-family: Literata/)
+    expect(reasily).not.toMatch(/h1 \{ font-size: 1\.35em/)
     const chosen = buildReaderCSS({
       ...DEFAULT_DISPLAY,
       formatting: 'reasily',
       fontFamily: '"Source Serif 4", Georgia, serif',
     })
     expect(chosen).toMatch(/font-family: "Source Serif 4", Georgia, serif !important/)
-    expect(chosen).not.toMatch(/font-family: Literata/)
   })
 
   it('applies a chosen typeface on html and body only', () => {

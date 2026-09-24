@@ -8,7 +8,6 @@ import { importEpubFile, removeBook } from './importBook'
 import { addBooksFromFiles, formatImportSummary, ingestNativeItems, pickNativeBooks } from './addBooks'
 import { booksOnShelf, groupBooks } from './sort'
 import { AudioStack, BookShelf } from './BookShelf'
-import { UpdateAppButton } from '../settings/UpdateAppButton'
 
 interface Props {
   onOpen: (id: string) => void
@@ -159,19 +158,6 @@ export function LibraryPage({ onOpen, onSettings }: Props) {
           </div>
         </div>
         <div className="lib-actions">
-          <UpdateAppButton
-            className="icon-btn"
-            label="Update"
-            onMessage={(message, kind) => {
-              if (kind === 'err') {
-                setError(message)
-                setStatus('')
-                return
-              }
-              setStatus(message)
-              setError('')
-            }}
-          />
           <button className="icon-btn" onClick={onSettings}>
             Settings
           </button>
