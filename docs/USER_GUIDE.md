@@ -77,4 +77,8 @@ Settings → Backup exports highlights, notes, and bookmarks as JSON. EPUB files
 
 ## Updates
 
-Installs from GitHub use Android id `com.loreguard.app`. After 4.0.0, a newer **versionCode** replaces that LoreGuard and keeps your library. Uninstall any 3.x build first; it was a different app id.
+Installs from GitHub use Android id `com.loreguard.app`. A newer **versionCode** signed with the same key replaces that LoreGuard and keeps your library.
+
+Builds through 4.1.4 were signed with a different debug key every release. Android then says the package conflicts with an existing package and will not replace the app. Export a backup, uninstall that copy once, and install 4.1.5 or later. After that, **Update app** in Settings keeps the library.
+
+Uninstall any 3.x build first; it was a different app id.

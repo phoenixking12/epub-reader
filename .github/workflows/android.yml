@@ -40,13 +40,20 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap sync android
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
       - name: Name APK
-        run: cp android/app/build/outputs/apk/debug/*.apk LoreGuard.apk
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk LoreGuard.apk
+          keytool -printcert -jarfile LoreGuard.apk > /tmp/loreguard-cert.txt
+          grep -q "CN=LoreGuard" /tmp/loreguard-cert.txt
+          if grep -q "CN=Android Debug" /tmp/loreguard-cert.txt; then
+            echo "Release APK is signed with a debug key, so Android will reject it as an update" >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@v5
         with:
           name: LoreGuard
