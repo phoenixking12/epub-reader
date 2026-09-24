@@ -32,8 +32,13 @@ describe('applyReasilyDocument', () => {
     const scene = document.querySelector('h2') as HTMLElement
     expect(title.style.getPropertyValue('text-align')).toBe('center')
     expect(title.style.getPropertyPriority('text-align')).toBe('important')
+    expect(title.style.getPropertyValue('margin')).toBe('0px')
+    expect(title.style.getPropertyValue('font-weight')).toBe('700')
     expect(scene.style.getPropertyValue('font-weight')).toBe('700')
+    expect(scene.style.getPropertyValue('margin')).toBe('0px')
     expect(scene.style.getPropertyValue('text-align')).toBe('center')
+    const prose = document.querySelector('p') as HTMLElement
+    expect(prose.style.getPropertyValue('margin')).toBe('0px')
   })
 
   it('treats an opening run of short lines as titles when the book does not use headings', () => {

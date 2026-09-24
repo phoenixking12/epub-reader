@@ -72,9 +72,22 @@ function restoreStyle(el: HTMLElement) {
   el.removeAttribute(PAINT)
 }
 
-function paint(el: HTMLElement, props: Record<string, string>) {
+function bookFace(el: HTMLElement, chosen?: string | null) {
+  if (chosen) return chosen
+  try {
+    const family = getComputedStyle(el).fontFamily
+    if (family && family !== 'inherit') return family
+  } catch {
+    /* jsdom */
+  }
+  return ''
+}
+
+function paint(el: HTMLElement, props: Record<string, string>, face: string) {
   rememberStyle(el)
   el.setAttribute(PAINT, '')
+  if (face) el.style.setProperty('font-family', face, 'important')
+  el.style.setProperty('font-synthesis', 'weight', 'important')
   for (const [name, value] of Object.entries(props)) el.style.setProperty(name, value, 'important')
   for (const child of Array.from(el.querySelectorAll('*'))) {
     if (!isHTMLElement(child)) continue
@@ -82,16 +95,23 @@ function paint(el: HTMLElement, props: Record<string, string>) {
     child.style.setProperty('letter-spacing', 'inherit', 'important')
     child.style.setProperty('word-spacing', 'inherit', 'important')
     child.style.setProperty('font-size', 'inherit', 'important')
+    child.style.setProperty('font-family', 'inherit', 'important')
+    child.style.setProperty('font-synthesis', 'weight', 'important')
   }
 }
 
 /**
- * Tag one chapter the way a novel layout does: the opening title is centered and
- * large, later scene lines are centered and bold, and prose is indented after
- * the first paragraph. Books differ because the tags follow their own headings.
- * Alignment is set on the elements so a book stylesheet cannot pin titles to the left.
+ * Bold and center the chapter title and later headings, without extra gaps.
+ * Prose keeps the reader's line height and alignment. The typeface stays the
+ * book's own face unless the reader picked one.
  */
-export function applyReasilyDocument(doc: Document, enabled: boolean, align: 'justify' | 'start' = 'justify') {
+export function applyReasilyDocument(
+  doc: Document,
+  enabled: boolean,
+  align: 'justify' | 'start' | 'center' | 'right' | 'left' = 'justify',
+  lineHeight = 1.55,
+  fontFamily?: string | null,
+) {
   const body = doc.body
   if (!body) return
   const blocks = reasilyBlocks(body)
@@ -114,20 +134,24 @@ export function applyReasilyDocument(doc: Document, enabled: boolean, align: 'ju
     if (heading || sceneBreak || openingTitle) {
       const chapter = !seenChapter
       el.classList.add(chapter ? 'lg-reasily-chapter' : 'lg-reasily-scene')
-      paint(el, {
-        display: 'block',
-        'text-align': 'center',
-        'text-indent': '0',
-        'font-size': chapter ? '2.05em' : '1.15em',
-        'font-weight': chapter ? '500' : '700',
-        'line-height': chapter ? '1.15' : '1.3',
-        'letter-spacing': chapter ? '0.04em' : 'normal',
-        'word-spacing': 'normal',
-        margin: chapter ? '0.15em 0 0.85em' : '0.35em 0',
-        padding: '0',
-        width: 'auto',
-        'max-width': 'none',
-      })
+      paint(
+        el,
+        {
+          display: 'block',
+          'text-align': 'center',
+          'text-indent': '0',
+          'font-size': chapter ? '1.35em' : '1.15em',
+          'font-weight': '700',
+          'line-height': String(lineHeight),
+          'letter-spacing': 'normal',
+          'word-spacing': 'normal',
+          margin: '0',
+          padding: '0',
+          width: 'auto',
+          'max-width': 'none',
+        },
+        bookFace(el, fontFamily),
+      )
       seenChapter = true
       afterHeading = true
       continue
@@ -135,21 +159,22 @@ export function applyReasilyDocument(doc: Document, enabled: boolean, align: 'ju
     const first = afterHeading || !seenChapter
     el.classList.add('lg-reasily-body')
     if (first) el.classList.add('lg-reasily-first')
-    paint(el, {
-      display: 'block',
-      'text-align': align,
-      'text-indent': first ? '0' : '1.5em',
-      'font-size': '1em',
-      'font-weight': '400',
-      'line-height': 'inherit',
-      'letter-spacing': 'normal',
-      'word-spacing': 'normal',
-      'margin-top': '0.95em',
-      'margin-left': '0',
-      'margin-right': '0',
-      'margin-bottom': '0',
-      padding: '0',
-    })
+    paint(
+      el,
+      {
+        display: 'block',
+        'text-align': align === 'start' ? 'left' : align,
+        'text-indent': first ? '0' : '1.5em',
+        'font-size': '1em',
+        'font-weight': '400',
+        'line-height': String(lineHeight),
+        'letter-spacing': 'normal',
+        'word-spacing': 'normal',
+        margin: '0',
+        padding: '0',
+      },
+      bookFace(el, fontFamily),
+    )
     afterHeading = false
     opening = false
     seenChapter = true

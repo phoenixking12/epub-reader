@@ -2,6 +2,19 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 5.0.0 — 2026-09-24
+
+Same Android id as 4.0.0. This APK replaces 4.1.5 and keeps the library. It cannot replace 4.1.4 or earlier, because those builds were signed with a different key.
+
+### Added
+
+- Color wheel waits for **Confirm** before a color is saved or applied. The intensity slider darkens the same point on the gradient
+- Text has Left, Center, Right, and Justify, plus line height and margin
+
+### Changed
+
+- Reasily bolds and centers headings and subheadings, without the extra gaps, and keeps the book’s typeface when Book default is selected
+
 ## 4.1.5 — 2026-09-24
 
 Same Android id as 4.0.0. Install this over a 4.1.5 or later build and the library stays. It cannot replace 4.1.4 or earlier: those APKs were signed with a different key.

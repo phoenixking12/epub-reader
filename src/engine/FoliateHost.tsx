@@ -13,7 +13,7 @@ import { applyReasilyDocument } from './reasily'
 import { shouldHorizontalTurn, turnDirection } from './pageTurn'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
-import { usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
+import { cssTextAlign, textAlignOf, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
 import { annSelector, applyInlineMark, inlineSpanPainted, isHTMLElement, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
@@ -44,7 +44,13 @@ function applyInlineType(doc: Document, settings: DisplaySettings) {
 
 function paintReaderDocument(doc: Document, settings: DisplaySettings) {
   applyInlineType(doc, settings)
-  applyReasilyDocument(doc, settings.formatting === 'reasily', settings.justify ? 'justify' : 'start')
+  applyReasilyDocument(
+    doc,
+    settings.formatting === 'reasily',
+    cssTextAlign(textAlignOf(settings)),
+    settings.lineHeight,
+    usesPublisherFont(settings.fontFamily) ? null : settings.fontFamily,
+  )
 }
 
 export interface SelectionInfo {

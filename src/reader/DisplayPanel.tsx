@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { rememberCustomColor } from '../settings/colors'
-import { BUNDLED_FONTS, flowForPageTurn } from '../settings/defaults'
-import type { DisplaySettings, FontRecord, PageTurnMode } from '../types/models'
+import { BUNDLED_FONTS, flowForPageTurn, textAlignOf } from '../settings/defaults'
+import type { DisplaySettings, FontRecord, PageTurnMode, TextAlign } from '../types/models'
 import { ColorRow } from './ColorRow'
 import { useSwipeClose } from '../ui/useSwipeClose'
 
@@ -68,7 +68,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
           </div>
           <p className="muted tiny">
             {settings.formatting === 'reasily'
-              ? 'Reasily centers the chapter title and scene lines, indents the prose, and keeps this book’s typeface unless you pick one.'
+              ? 'Reasily bolds and centers headings and subheadings, without extra gaps, and keeps this book’s typeface unless you pick one.'
               : 'Book keeps the file’s own paragraph layout and heading sizes.'}
           </p>
           <label className="field">
@@ -98,13 +98,27 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
             />
           </label>
+          <p className="field-label">Alignment</p>
           <div className="action-row">
-            <button
-              className={settings.justify ? 'chip active' : 'chip'}
-              onClick={() => onChange({ justify: !settings.justify })}
-            >
-              Justify
-            </button>
+            {(
+              [
+                ['left', 'Left'],
+                ['center', 'Center'],
+                ['right', 'Right'],
+                ['justify', 'Justify'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={textAlignOf(settings) === id ? 'chip active' : 'chip'}
+                onClick={() => onChange({ textAlign: id as TextAlign, justify: id === 'justify' })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="action-row">
             <button
               className={settings.hyphenate ? 'chip active' : 'chip'}
               onClick={() => onChange({ hyphenate: !settings.hyphenate })}
@@ -113,7 +127,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
             </button>
           </div>
           <label className="field">
-            Line spacing {settings.lineHeight.toFixed(2)}
+            Line height {settings.lineHeight.toFixed(2)}
             <input
               type="range"
               min={1.1}
@@ -121,6 +135,17 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
               step={0.05}
               value={settings.lineHeight}
               onChange={(e) => onChange({ lineHeight: Number(e.target.value) })}
+            />
+          </label>
+          <label className="field">
+            Margin {settings.margin}px
+            <input
+              type="range"
+              min={0}
+              max={72}
+              step={2}
+              value={settings.margin}
+              onChange={(e) => onChange({ margin: Number(e.target.value) })}
             />
           </label>
           <label className="field">

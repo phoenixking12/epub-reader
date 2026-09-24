@@ -780,13 +780,29 @@ select option { background: #1c1917; color: #fafaf9; }
   gap: 12px;
   margin: 0;
 }
+.color-wheel-stage {
+  position: relative;
+  flex: none;
+}
 .color-wheel {
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   touch-action: none;
   cursor: crosshair;
+  display: block;
 }
+.color-wheel-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #1c1917;
+  pointer-events: none;
+}
+.color-confirm { justify-self: start; }
 .wheel-preview {
   width: 28px;
   height: 28px;
