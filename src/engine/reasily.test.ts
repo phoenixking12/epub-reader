@@ -28,6 +28,12 @@ describe('applyReasilyDocument', () => {
     expect(marked.scene).toEqual(['Home world', 'Licking wounds', 'Outriders'])
     expect(marked.first).toEqual(['It had all started with Nikaea.'])
     expect(marked.body[1]).toMatch(/Targutai/)
+    const title = document.querySelector('h1') as HTMLElement
+    const scene = document.querySelector('h2') as HTMLElement
+    expect(title.style.getPropertyValue('text-align')).toBe('center')
+    expect(title.style.getPropertyPriority('text-align')).toBe('important')
+    expect(scene.style.getPropertyValue('font-weight')).toBe('700')
+    expect(scene.style.getPropertyValue('text-align')).toBe('center')
   })
 
   it('treats an opening run of short lines as titles when the book does not use headings', () => {
@@ -65,9 +71,25 @@ describe('applyReasilyDocument', () => {
   })
 
   it('removes the novel tags when Reasily is turned off', () => {
-    document.body.innerHTML = '<h1>Two</h1><p>It had all started with Nikaea.</p>'
+    document.body.innerHTML = '<h1 style="text-align: left">Two</h1><p>It had all started with Nikaea.</p>'
     applyReasilyDocument(document, true)
     applyReasilyDocument(document, false)
     expect(document.querySelector('.lg-reasily-chapter, .lg-reasily-body')).toBeNull()
+    expect((document.querySelector('h1') as HTMLElement).getAttribute('style')).toBe('text-align: left')
+  })
+
+  it('recognizes lowercase tags from an XHTML chapter', () => {
+    const xml = document.implementation.createDocument('http://www.w3.org/1999/xhtml', 'html', null)
+    const body = xml.createElementNS('http://www.w3.org/1999/xhtml', 'body')
+    const h1 = xml.createElementNS('http://www.w3.org/1999/xhtml', 'h1')
+    h1.textContent = 'Two'
+    const p = xml.createElementNS('http://www.w3.org/1999/xhtml', 'p')
+    p.textContent = 'It had all started with Nikaea.'
+    body.append(h1, p)
+    xml.documentElement.append(body)
+    applyReasilyDocument(xml, true)
+    expect(h1.classList.contains('lg-reasily-chapter')).toBe(true)
+    expect(h1.style.getPropertyValue('text-align')).toBe('center')
+    expect(p.classList.contains('lg-reasily-first')).toBe(true)
   })
 })

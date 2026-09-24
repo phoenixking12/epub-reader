@@ -44,7 +44,7 @@ function applyInlineType(doc: Document, settings: DisplaySettings) {
 
 function paintReaderDocument(doc: Document, settings: DisplaySettings) {
   applyInlineType(doc, settings)
-  applyReasilyDocument(doc, settings.formatting === 'reasily')
+  applyReasilyDocument(doc, settings.formatting === 'reasily', settings.justify ? 'justify' : 'start')
 }
 
 export interface SelectionInfo {
