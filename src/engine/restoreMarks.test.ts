@@ -46,6 +46,37 @@ describe('restoreChapterMarks', () => {
     expect(span?.style.getPropertyPriority('color')).toBe('important')
   })
 
+  it('draws a highlight from the stored quote when the position no longer matches', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p>The fleet sailed at dawn.</p>'
+    const painted: string[] = []
+    restoreChapterMarks(
+      doc,
+      2,
+      [rec({ style: 'highlight', sectionIndex: 2, cfiRange: 'epubcfi(/6/4!/99)' })],
+      () => null,
+      (mark, range) => painted.push(`${mark.style}:${range.toString()}`),
+    )
+    expect(painted).toEqual(['highlight:fleet'])
+    expect(doc.querySelector('[data-lg-ann]')).toBeNull()
+  })
+
+  it('keeps a mark on the chapter where it was saved', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p>The fleet sailed at dawn.</p>'
+    restoreChapterMarks(doc, 4, [rec({ sectionIndex: 2 })], () => 4)
+    expect(doc.querySelector('[data-lg-ann]')).toBeNull()
+  })
+
+  it('replaces a wrapper that no longer covers the saved words', () => {
+    const doc = document.implementation.createHTMLDocument('t')
+    doc.body.innerHTML = '<p>The fleet sailed at <span data-lg-ann="mark-1" data-lg-kind="textColor">dawn</span>.</p>'
+    restoreChapterMarks(doc, 2, [rec({ sectionIndex: 2, quote: 'fleet' })], () => null)
+    const spans = [...doc.querySelectorAll('[data-lg-ann]')]
+    expect(spans).toHaveLength(1)
+    expect(spans[0]?.textContent).toBe('fleet')
+  })
+
   it('does not paint a mark that belongs to another chapter', () => {
     const doc = document.implementation.createHTMLDocument('t')
     doc.body.innerHTML = '<p>The fleet sailed at dawn.</p>'

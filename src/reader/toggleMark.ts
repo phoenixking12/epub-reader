@@ -37,7 +37,14 @@ export function markTargetId(input: {
 export function duplicateMarkIds(
   keptId: string,
   cfi: string,
-  annotations: Array<{ id: string; cfiRange: string }>,
+  annotations: Array<{ id: string; cfiRange: string; quote?: string }>,
+  quote?: string,
 ): string[] {
-  return annotations.filter((a) => a.cfiRange === cfi && a.id !== keptId).map((a) => a.id)
+  return annotations
+    .filter((a) => {
+      if (a.id === keptId || a.cfiRange !== cfi) return false
+      if (quote && a.quote && a.quote !== quote) return false
+      return true
+    })
+    .map((a) => a.id)
 }

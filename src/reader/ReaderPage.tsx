@@ -215,6 +215,7 @@ export function ReaderPage({ bookId, onBack }: Props) {
       id: newId(),
       bookId,
       cfiRange: sel.cfi,
+      sectionIndex: sel.index,
       quote: sel.text,
       style,
       color,
@@ -499,24 +500,24 @@ export function ReaderPage({ bookId, onBack }: Props) {
           if (!selection) return
           const sel = selection
           const paintedId = style === 'textColor' ? (host.current?.recolorSelection(color) ?? null) : null
-          markChain.current = markChain.current
-            .then(async () => {
-              const anns = annotationsRef.current
-              const pendingId = pendingMark.current?.text === sel.text ? pendingMark.current.id : null
-              const kept =
-                markTargetId({
-                  paintedId,
-                  pendingId,
-                  selectedId: sel.annotationId,
-                  cfi: sel.cfi,
-                  annotations: anns,
-                }) ?? null
-              let id = kept
+          markChain.current = markChain.current.then(async () => {
+            const anns = annotationsRef.current
+            const pendingId = pendingMark.current?.text === sel.text ? pendingMark.current.id : null
+            const kept =
+              markTargetId({
+                paintedId,
+                pendingId,
+                selectedId: sel.annotationId,
+                cfi: sel.cfi,
+                annotations: anns,
+              }) ?? null
+            let id = kept
+            try {
               if (id) {
-                await db.annotations.update(id, { style, color })
+                await db.annotations.update(id, { style, color, sectionIndex: sel.index })
                 const keptRec = anns.find((a) => a.id === id)
                 await Promise.all(
-                  duplicateMarkIds(id, keptRec?.cfiRange ?? sel.cfi, anns).map((extra) =>
+                  duplicateMarkIds(id, keptRec?.cfiRange ?? sel.cfi, anns, sel.text).map((extra) =>
                     db.annotations.delete(extra),
                   ),
                 )
@@ -524,8 +525,13 @@ export function ReaderPage({ bookId, onBack }: Props) {
                 const rec = await addAnnotation(sel, style, color)
                 id = rec.id
               }
-              pendingMark.current = { text: sel.text, id }
-              setSelection((s) => (s && s.text === sel.text ? { ...s, annotationId: id } : s))
+            } catch (err) {
+              console.error(err)
+              return
+            }
+            pendingMark.current = { text: sel.text, id }
+            setSelection((s) => (s && s.text === sel.text ? { ...s, annotationId: id } : s))
+            try {
               const current = await getSettings()
               await saveSettings({
                 display: {
@@ -535,8 +541,10 @@ export function ReaderPage({ bookId, onBack }: Props) {
                   customHighlightColors: rememberCustomColor(current.display.customHighlightColors, color),
                 },
               })
-            })
-            .catch(() => undefined)
+            } catch (err) {
+              console.error(err)
+            }
+          })
         }}
         onNote={() => {
           if (selectedAnn) {

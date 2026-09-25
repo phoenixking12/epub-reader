@@ -1,6 +1,6 @@
 import type { AnnotationRecord } from '../types/models'
 import { rangeFromCfi } from './cfiIgnore'
-import { applyInlineMark, isInlineMark } from './inlineMark'
+import { annSelector, applyInlineMark, isInlineMark, unwrapAnnSpans } from './inlineMark'
 
 interface TextPiece {
   node: Text
@@ -94,31 +94,51 @@ function rangeForRecord(doc: Document, rec: AnnotationRecord, allowQuote: boolea
   return rangeForQuote(doc, rec.quote)
 }
 
+function sectionFor(rec: AnnotationRecord, sectionOf: (cfi: string) => number | null) {
+  if (typeof rec.sectionIndex === 'number' && rec.sectionIndex >= 0) return rec.sectionIndex
+  if (!rec.cfiRange) return null
+  const section = sectionOf(rec.cfiRange)
+  return section != null && section >= 0 ? section : null
+}
+
+function plain(value: string) {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
 /**
- * Draw font color, bold, and italic back onto a chapter document.
- * Navigating away destroys the iframe, and foliate only emits create-overlay
- * before the overlayer exists, so these marks cannot wait for addAnnotation.
+ * Put saved marks back on a chapter document.
+ * The database keeps them; the chapter file does not, and each visit builds a new document.
  */
 export function restoreChapterMarks(
   doc: Document,
   index: number,
   records: readonly AnnotationRecord[],
   sectionOf: (cfi: string) => number | null,
+  paintOverlay?: (rec: AnnotationRecord, range: Range) => void,
 ) {
-  const chosen = new Map<string, { rec: AnnotationRecord; allowQuote: boolean }>()
+  const chosen = new Map<string, AnnotationRecord>()
   for (const rec of records) {
-    if (!isInlineMark(rec.style)) continue
-    const section = rec.cfiRange ? sectionOf(rec.cfiRange) : index
+    const section = sectionFor(rec, sectionOf)
     if (section != null && section !== index) continue
-    const key = rec.cfiRange || rec.id
+    const key = rec.id
     const prior = chosen.get(key)
-    if (!prior || rec.createdAt >= prior.rec.createdAt) chosen.set(key, { rec, allowQuote: section === index })
+    if (!prior || rec.createdAt >= prior.createdAt) chosen.set(key, rec)
   }
-  for (const { rec, allowQuote } of chosen.values()) {
-    const range = rangeForRecord(doc, rec, allowQuote)
+  for (const rec of chosen.values()) {
+    const section = sectionFor(rec, sectionOf)
+    const range = rangeForRecord(doc, rec, section == null || section === index)
     if (!range) continue
     try {
-      applyInlineMark(doc, range, rec)
+      if (isInlineMark(rec.style)) {
+        const want = plain(rec.quote)
+        const stale = want
+          ? [...doc.querySelectorAll(annSelector(rec.id))].some((el) => plain(el.textContent ?? '') !== want)
+          : false
+        if (stale) unwrapAnnSpans(doc, rec.id)
+        applyInlineMark(doc, range, rec)
+      } else {
+        paintOverlay?.(rec, range)
+      }
     } catch {
       /* detached */
     }

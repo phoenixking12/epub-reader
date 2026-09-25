@@ -47,7 +47,7 @@ function sectionIndexOf(view: View, cfi: string) {
   if (!cfi) return null
   try {
     const resolved = view.resolveNavigation(cfi) as { index?: number } | undefined
-    return typeof resolved?.index === 'number' ? resolved.index : null
+    return typeof resolved?.index === 'number' && resolved.index >= 0 ? resolved.index : null
   } catch {
     return null
   }
@@ -1339,6 +1339,39 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     getDir: () => (viewRef.current?.book.dir === 'rtl' ? 'rtl' : 'ltr'),
   }))
 
+  const repaintStoredMarks = (withOverlay: boolean) => {
+    const v = viewRef.current
+    const parts = v?.renderer?.getContents?.() ?? []
+    for (const part of parts) {
+      if (!part.doc) continue
+      const overlayer = withOverlay
+        ? (part.overlayer as {
+            add: (
+              key: string,
+              range: Range,
+              draw: (rects: DOMRectList, opts?: object) => SVGElement,
+              options?: object,
+            ) => void
+            remove: (key: string) => void
+          } | undefined)
+        : undefined
+      restoreChapterMarks(
+        part.doc,
+        part.index,
+        annotationsRef.current,
+        (cfi) => (v ? sectionIndexOf(v, cfi) : null),
+        overlayer?.add
+          ? (rec, range) => {
+              const key = rec.cfiRange || rec.id
+              overlayer.remove(key)
+              const [fn, opts] = drawAnnotation(rec.style, rec.color)
+              overlayer.add(key, range, fn, opts)
+            }
+          : undefined,
+      )
+    }
+  }
+
   useEffect(() => {
     const host = rootRef.current
     if (!host) return
@@ -1348,14 +1381,6 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     host.append(view)
     viewRef.current = view
     let cancelled = false
-
-    const paintAnnotations = () => {
-      const v = viewRef.current
-      if (!v) return
-      for (const rec of annotationsRef.current) {
-        void Promise.resolve(v.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
-      }
-    }
 
     const onLoad = (e: Event) => {
       const { doc, index } = (e as CustomEvent).detail as { doc: Document; index: number }
@@ -1382,9 +1407,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const colors = themeColors(settingsRef.current)
       doc.documentElement.style.background = colors.bg
       paintReaderDocument(doc, settingsRef.current)
-      // Chapter navigation builds a new iframe from the book file, so marks
-      // have to be drawn again. Do it before column layout, while this
-      // document is already parsed and before bookmark buttons are inserted.
+      // The saved rows live in the database. This document was just built from
+      // the book file, so put those rows back on it before column layout.
       restoreChapterMarks(doc, index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
       paintParagraphMarks()
       bindPinchToDocument(doc)
@@ -1446,15 +1470,10 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
 
     const onCreateOverlay = () => {
       // Emitted from inside #createOverlayer, before attach() stores the
-      // overlayer. Underlines and highlights need that overlayer, so paint
-      // them on the next turn. Font color is also applied here in case the
-      // load handler ran before the mark list was ready.
+      // overlayer. Highlights and underlines need that overlayer, so paint
+      // the stored rows again on the next turn.
       queueMicrotask(() => {
-        for (const part of view.renderer?.getContents() ?? []) {
-          if (!part.doc) continue
-          restoreChapterMarks(part.doc, part.index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
-        }
-        paintAnnotations()
+        repaintStoredMarks(true)
         paintParagraphMarks()
       })
     }
@@ -1548,7 +1567,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         }
         if (cancelled) return
         onReadyRef.current?.(book.toc ?? [], String(book.metadata?.title ?? ''), Boolean(view.mediaOverlay))
-        paintAnnotations()
+        repaintStoredMarks(true)
         paintParagraphMarks()
         for (const part of view.renderer.getContents()) {
           if (part.doc) {
@@ -1606,10 +1625,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     applyRendererLayout(view.renderer, settingsRef.current)
     view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
     for (const part of view.renderer.getContents()) {
-      if (!part.doc) continue
-      paintReaderDocument(part.doc, settingsRef.current)
-      restoreChapterMarks(part.doc, part.index, annotationsRef.current, (cfi) => sectionIndexOf(view, cfi))
+      if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
     }
+    repaintStoredMarks(true)
   }, [settingsKey])
 
   useEffect(() => {
@@ -1691,6 +1709,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         if (inlineColorOnly) continue
         await Promise.resolve(view.addAnnotation({ value: rec.cfiRange })).catch(() => undefined)
       }
+      if (ticket !== annTicket.current) return
+      repaintStoredMarks(true)
     })()
     return () => {
       annTicket.current += 1
