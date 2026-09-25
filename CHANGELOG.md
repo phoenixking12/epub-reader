@@ -2,6 +2,14 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 5.0.1 — 2026-09-25
+
+Same Android id as 4.0.0. This APK replaces 5.0.0 and keeps the library.
+
+### Fixed
+
+- Font color, highlights, and other marks stay after you leave a chapter and come back. They remain until you remove them.
+
 ## 5.0.0 — 2026-09-24
 
 Same Android id as 4.0.0. This APK replaces 4.1.5 and keeps the library. It cannot replace 4.1.4 or earlier, because those builds were signed with a different key.

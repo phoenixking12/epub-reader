@@ -90,7 +90,7 @@ function paint(el: HTMLElement, props: Record<string, string>, face: string) {
   el.style.setProperty('font-synthesis', 'weight', 'important')
   for (const [name, value] of Object.entries(props)) el.style.setProperty(name, value, 'important')
   for (const child of Array.from(el.querySelectorAll('*'))) {
-    if (!isHTMLElement(child)) continue
+    if (!isHTMLElement(child) || child.hasAttribute('data-lg-ann')) continue
     rememberStyle(child)
     child.style.setProperty('letter-spacing', 'inherit', 'important')
     child.style.setProperty('word-spacing', 'inherit', 'important')

@@ -1,9 +1,15 @@
 import * as CFI from 'foliate-js/epubcfi.js'
 import type { View } from 'foliate-js/view.js'
 
+function isElementNode(node: Node): node is Element {
+  // Chapter text lives in an iframe. Those elements are not `instanceof Element`
+  // from the app window, so a realm check would keep the wrapper in the CFI.
+  return node.nodeType === Node.ELEMENT_NODE
+}
+
 /** Skip injected bookmark marks and annotation wrappers so CFIs stay stable. */
 export function cfiIgnoreNode(node: Node): number {
-  if (!(node instanceof Element)) return NodeFilter.FILTER_ACCEPT
+  if (!isElementNode(node)) return NodeFilter.FILTER_ACCEPT
   if (node.hasAttribute('data-lg-ann') || node.classList.contains('lg-pmark')) {
     return NodeFilter.FILTER_SKIP
   }

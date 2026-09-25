@@ -30,6 +30,12 @@ describe('markTargetId', () => {
   it('uses the open annotation before creating another one', () => {
     expect(markTargetId({ selectedId: 'new', cfi: 'cfi-1', annotations })).toBe('new')
     expect(duplicateMarkIds('new', 'cfi-1', annotations)).toEqual(['old'])
+    expect(
+      duplicateMarkIds('new', 'cfi-1', [
+        { id: 'old', cfiRange: 'cfi-1', quote: 'fleet' },
+        { id: 'other', cfiRange: 'cfi-1', quote: 'dawn' },
+      ], 'fleet'),
+    ).toEqual(['old'])
   })
 
   it('updates the span on screen even when the selection CFI has drifted', () => {

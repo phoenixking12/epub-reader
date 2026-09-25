@@ -98,6 +98,8 @@ export interface AnnotationRecord {
   id: string
   bookId: string
   cfiRange: string
+  /** Spine index captured when the mark was made, so a chapter reload can find it. */
+  sectionIndex?: number
   quote: string
   style: AnnotationStyle
   color: string
