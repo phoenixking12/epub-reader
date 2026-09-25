@@ -4,9 +4,9 @@ Keep these three version numbers the same before you tag a build:
 
 | Place | Field | Example |
 | --- | --- | --- |
-| `package.json` | `version` | `5.0.0` |
-| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `5.0.0` / `11` |
-| `android/app/build.gradle` | `versionName` / `versionCode` | `5.0.0` / `11` |
+| `package.json` | `version` | `5.0.1` |
+| `src/version.ts` | `APP_VERSION` / `APP_BUILD` | `5.0.1` / `12` |
+| `android/app/build.gradle` | `versionName` / `versionCode` | `5.0.1` / `12` |
 
 `versionCode` must **increase** on every APK you ship after 4.0.0 (`1` → `2` → `3` …). Android uses that integer to treat the file as an update of the same app.
 
@@ -39,7 +39,7 @@ gh repo rename LoreGuard
 5. Tag and push:
 
 ```bash
-git tag v5.0.0
+git tag v5.0.1
 git push origin main --tags
 ```
 
