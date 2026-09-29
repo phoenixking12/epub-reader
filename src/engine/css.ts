@@ -12,12 +12,19 @@ export function themeColors(settings: DisplaySettings) {
 function reasilyLayout(settings: DisplaySettings) {
   const align = cssTextAlign(textAlignOf(settings))
   const hyphens = settings.hyphenate ? 'auto' : 'manual'
-  const face = usesPublisherFont(settings.fontFamily)
-    ? 'font-family: inherit !important;'
-    : `font-family: ${settings.fontFamily} !important;`
+  const bookFace = usesPublisherFont(settings.fontFamily)
+  const face = bookFace ? '' : `font-family: ${settings.fontFamily} !important;`
+  const bodyFace = bookFace
+    ? ''
+    : `font-size: 1em !important;
+      font-weight: 400 !important;`
+  const nestedFace = bookFace
+    ? ''
+    : `font-size: inherit !important;
+      font-family: inherit !important;`
   return `
     html, body {
-      ${usesPublisherFont(settings.fontFamily) ? '' : face}
+      ${face}
       letter-spacing: normal !important;
       word-spacing: normal !important;
     }
@@ -51,8 +58,7 @@ function reasilyLayout(settings: DisplaySettings) {
       ${face}
       text-align: ${align} !important;
       text-indent: 1.5em !important;
-      font-size: 1em !important;
-      font-weight: 400 !important;
+      ${bodyFace}
       font-synthesis: weight !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
@@ -69,8 +75,7 @@ function reasilyLayout(settings: DisplaySettings) {
     .lg-reasily-chapter *, .lg-reasily-scene *, .lg-reasily-body * {
       letter-spacing: inherit !important;
       word-spacing: inherit !important;
-      font-size: inherit !important;
-      font-family: inherit !important;
+      ${nestedFace}
     }
     blockquote .lg-reasily-body {
       margin-left: 1em !important;

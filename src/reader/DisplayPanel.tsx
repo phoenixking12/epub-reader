@@ -68,7 +68,7 @@ export function DisplayPanel({ open, section, settings, customFonts, onChange, o
           </div>
           <p className="muted tiny">
             {settings.formatting === 'reasily'
-              ? 'Reasily bolds and centers headings and subheadings, without extra gaps, and keeps this book’s typeface unless you pick one.'
+              ? 'Reasily bolds and centers headings and subheadings, without extra gaps, and keeps each typeface this book already uses unless you pick one.'
               : 'Book keeps the file’s own paragraph layout and heading sizes.'}
           </p>
           <label className="field">
