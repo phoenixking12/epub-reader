@@ -116,19 +116,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${imgFilter}
     }`
   const align = cssTextAlign(textAlignOf(settings))
-  const paragraphLayout =
-    publisher && !reasily
-      ? `
-    p, li, blockquote, dd {
-      line-height: ${settings.lineHeight} !important;
-      text-align: ${align} !important;
-      -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hanging-punctuation: allow-end last;
-      orphans: 2;
-      widows: 2;
-    }`
-      : ''
   const readingType = publisher || reasily
     ? ''
     : `
@@ -358,7 +345,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       border-radius: 2px;
     }
     ${typeScale}
-    ${paragraphLayout}
     ${readingType}
     ${reasily ? reasilyLayout(settings) : ''}
     ${linkRule}
@@ -372,7 +358,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     aside[epub|type~="rearnote"] {
       ${settings.footnotePosition === 'follow' ? '' : 'display: none;'}
     }
-    math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }
+    ${publisher ? '' : 'math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }'}
   `
 }
 
