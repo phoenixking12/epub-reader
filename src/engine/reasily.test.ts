@@ -75,6 +75,30 @@ describe('applyReasilyDocument', () => {
     expect(marked.first).toEqual(['It had all started with Nikaea.', 'But after the Master of Mankind had spoken.'])
   })
 
+  it('keeps the book faces on a heading, a subheading, and a cast list', () => {
+    document.body.innerHTML = `
+      <h1 style="font-family: Display">Two</h1>
+      <p class="h2" style="font-family: Subhead">The Warp</p>
+      <p style="font-family: Body">The <span style="font-family: Cast">Warmaster</span> waited.</p>
+    `
+    applyReasilyDocument(document, true)
+    const title = document.querySelector('h1') as HTMLElement
+    const sub = document.querySelector('.h2') as HTMLElement
+    const prose = document.querySelector('p:not(.h2)') as HTMLElement
+    const cast = prose.querySelector('span') as HTMLElement
+    expect(title.classList.contains('lg-reasily-chapter')).toBe(true)
+    expect(sub.classList.contains('lg-reasily-scene')).toBe(true)
+    expect(prose.classList.contains('lg-reasily-body')).toBe(true)
+    expect(title.style.fontFamily).toMatch(/Display/)
+    expect(sub.style.fontFamily).toMatch(/Subhead/)
+    expect(prose.style.fontFamily).toMatch(/Body/)
+    expect(cast.style.fontFamily).toMatch(/Cast/)
+    expect(cast.style.getPropertyValue('font-family')).not.toBe('inherit')
+    expect(prose.style.getPropertyValue('font-weight')).toBe('')
+    expect(title.style.getPropertyValue('font-weight')).toBe('700')
+    expect(sub.style.getPropertyValue('font-weight')).toBe('700')
+  })
+
   it('keeps a font-color mark when formatting runs again', () => {
     document.body.innerHTML =
       '<p>The <span data-lg-ann="a" data-lg-kind="textColor" style="color: rgb(250, 204, 21)">fleet</span> sailed.</p>'

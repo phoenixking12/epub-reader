@@ -12,12 +12,19 @@ export function themeColors(settings: DisplaySettings) {
 function reasilyLayout(settings: DisplaySettings) {
   const align = cssTextAlign(textAlignOf(settings))
   const hyphens = settings.hyphenate ? 'auto' : 'manual'
-  const face = usesPublisherFont(settings.fontFamily)
-    ? 'font-family: inherit !important;'
-    : `font-family: ${settings.fontFamily} !important;`
+  const bookFace = usesPublisherFont(settings.fontFamily)
+  const face = bookFace ? '' : `font-family: ${settings.fontFamily} !important;`
+  const bodyFace = bookFace
+    ? ''
+    : `font-size: 1em !important;
+      font-weight: 400 !important;`
+  const nestedFace = bookFace
+    ? ''
+    : `font-size: inherit !important;
+      font-family: inherit !important;`
   return `
     html, body {
-      ${usesPublisherFont(settings.fontFamily) ? '' : face}
+      ${face}
       letter-spacing: normal !important;
       word-spacing: normal !important;
     }
@@ -51,8 +58,7 @@ function reasilyLayout(settings: DisplaySettings) {
       ${face}
       text-align: ${align} !important;
       text-indent: 1.5em !important;
-      font-size: 1em !important;
-      font-weight: 400 !important;
+      ${bodyFace}
       font-synthesis: weight !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
@@ -69,8 +75,7 @@ function reasilyLayout(settings: DisplaySettings) {
     .lg-reasily-chapter *, .lg-reasily-scene *, .lg-reasily-body * {
       letter-spacing: inherit !important;
       word-spacing: inherit !important;
-      font-size: inherit !important;
-      font-family: inherit !important;
+      ${nestedFace}
     }
     blockquote .lg-reasily-body {
       margin-left: 1em !important;
@@ -111,19 +116,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       ${imgFilter}
     }`
   const align = cssTextAlign(textAlignOf(settings))
-  const paragraphLayout =
-    publisher && !reasily
-      ? `
-    p, li, blockquote, dd {
-      line-height: ${settings.lineHeight} !important;
-      text-align: ${align} !important;
-      -webkit-hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hyphens: ${settings.hyphenate ? 'auto' : 'manual'};
-      hanging-punctuation: allow-end last;
-      orphans: 2;
-      widows: 2;
-    }`
-      : ''
   const readingType = publisher || reasily
     ? ''
     : `
@@ -353,7 +345,6 @@ export function buildReaderCSS(settings: DisplaySettings): string {
       border-radius: 2px;
     }
     ${typeScale}
-    ${paragraphLayout}
     ${readingType}
     ${reasily ? reasilyLayout(settings) : ''}
     ${linkRule}
@@ -367,7 +358,7 @@ export function buildReaderCSS(settings: DisplaySettings): string {
     aside[epub|type~="rearnote"] {
       ${settings.footnotePosition === 'follow' ? '' : 'display: none;'}
     }
-    math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }
+    ${publisher ? '' : 'math, mrow, mi, mo, mn { font-family: "Latin Modern Math", "STIX Two Math", math, serif; }'}
   `
 }
 

@@ -52,6 +52,8 @@ function markedHeading(el: HTMLElement, text: string) {
   if (/^H[1-6]$/.test(tagOf(el))) return true
   const role = `${el.getAttribute('epub:type') || ''} ${typeof el.className === 'string' ? el.className : ''} ${el.id}`
   if (ROLE.test(role)) return true
+  const tokens = typeof el.className === 'string' ? el.className.split(/[\s_]+/) : []
+  if (tokens.some((name) => /^h[1-6]$/i.test(name))) return true
   const align = `${el.getAttribute('align') || ''} ${el.style?.textAlign || ''}`
   return /center/i.test(align) && isOpeningTitle(text)
 }
@@ -72,17 +74,6 @@ function restoreStyle(el: HTMLElement) {
   el.removeAttribute(PAINT)
 }
 
-function bookFace(el: HTMLElement, chosen?: string | null) {
-  if (chosen) return chosen
-  try {
-    const family = getComputedStyle(el).fontFamily
-    if (family && family !== 'inherit') return family
-  } catch {
-    /* jsdom */
-  }
-  return ''
-}
-
 function paint(el: HTMLElement, props: Record<string, string>, face: string) {
   rememberStyle(el)
   el.setAttribute(PAINT, '')
@@ -94,16 +85,18 @@ function paint(el: HTMLElement, props: Record<string, string>, face: string) {
     rememberStyle(child)
     child.style.setProperty('letter-spacing', 'inherit', 'important')
     child.style.setProperty('word-spacing', 'inherit', 'important')
-    child.style.setProperty('font-size', 'inherit', 'important')
-    child.style.setProperty('font-family', 'inherit', 'important')
-    child.style.setProperty('font-synthesis', 'weight', 'important')
+    if (face) {
+      child.style.setProperty('font-size', 'inherit', 'important')
+      child.style.setProperty('font-family', 'inherit', 'important')
+      child.style.setProperty('font-synthesis', 'weight', 'important')
+    }
   }
 }
 
 /**
- * Bold and center the chapter title and later headings, without extra gaps.
- * Prose keeps the reader's line height and alignment. The typeface stays the
- * book's own face unless the reader picked one.
+ * Bold and center the chapter title, then later headings, without extra gaps.
+ * Prose keeps the reader's line height and alignment. With no chosen typeface,
+ * each face the book already uses stays, including a cast list inside a paragraph.
  */
 export function applyReasilyDocument(
   doc: Document,
@@ -150,7 +143,7 @@ export function applyReasilyDocument(
           width: 'auto',
           'max-width': 'none',
         },
-        bookFace(el, fontFamily),
+        fontFamily || '',
       )
       seenChapter = true
       afterHeading = true
@@ -159,22 +152,21 @@ export function applyReasilyDocument(
     const first = afterHeading || !seenChapter
     el.classList.add('lg-reasily-body')
     if (first) el.classList.add('lg-reasily-first')
-    paint(
-      el,
-      {
-        display: 'block',
-        'text-align': align === 'start' ? 'left' : align,
-        'text-indent': first ? '0' : '1.5em',
-        'font-size': '1em',
-        'font-weight': '400',
-        'line-height': String(lineHeight),
-        'letter-spacing': 'normal',
-        'word-spacing': 'normal',
-        margin: '0',
-        padding: '0',
-      },
-      bookFace(el, fontFamily),
-    )
+    const bodyProps: Record<string, string> = {
+      display: 'block',
+      'text-align': align === 'start' ? 'left' : align,
+      'text-indent': first ? '0' : '1.5em',
+      'line-height': String(lineHeight),
+      'letter-spacing': 'normal',
+      'word-spacing': 'normal',
+      margin: '0',
+      padding: '0',
+    }
+    if (fontFamily) {
+      bodyProps['font-size'] = '1em'
+      bodyProps['font-weight'] = '400'
+    }
+    paint(el, bodyProps, fontFamily || '')
     afterHeading = false
     opening = false
     seenChapter = true
