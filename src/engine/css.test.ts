@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRendererLayout, buildReaderCSS } from './css'
+import { applyRendererLayout, buildReaderCSS, readerStyleSheets } from './css'
 import { DEFAULT_DISPLAY } from '../settings/defaults'
 
 describe('buildReaderCSS', () => {
@@ -56,6 +56,12 @@ describe('buildReaderCSS', () => {
   it('does not override the book typeface or sizes when Book default is selected', () => {
     expect(css).not.toMatch(/font-family: publisher/)
     expect(css).not.toMatch(/font-family: "Source Serif 4"/)
+    const sheets = readerStyleSheets(DEFAULT_DISPLAY)
+    expect(Array.isArray(sheets)).toBe(true)
+    if (Array.isArray(sheets)) {
+      expect(sheets[0]).toMatch(/font-family: initial/)
+      expect(sheets[1]).not.toMatch(/Source Serif/)
+    }
     expect(css).not.toMatch(/h1 \{ font-size: 1\.85em/)
     expect(css).not.toMatch(/JetBrains Mono/)
     expect(css).not.toMatch(/Latin Modern Math/)

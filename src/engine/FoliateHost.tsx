@@ -8,37 +8,41 @@ import { View } from 'foliate-js/view.js'
 import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
-import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
+import { applyRendererLayout, readerStyleSheets, themeColors } from './css'
+import { ensureReadingFont } from './fonts'
 import { applyReasilyDocument } from './reasily'
 import { shouldHorizontalTurn, turnDirection } from './pageTurn'
 import { bookmarkBlocks, caretIsTextual, isHugeNativeSelection, nearestBookmarkBlock, wordRangeFromHit } from './selectWord'
 import { bookReadFraction, chapterReadFraction, quoteLooksLike } from '../reader/progress'
-import { cssTextAlign, textAlignOf, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
+import { cssTextAlign, isAppFontFamily, textAlignOf, usesPublisherFont, DEFAULT_DISPLAY } from '../settings/defaults'
 import { installCfiIgnore } from './cfiIgnore'
 import { restoreChapterMarks } from './restoreMarks'
 import { annotationWrapFromPoint, annotationWrapFromRange } from './annHit'
 import { annSelector, applyInlineMark, inlineSpanPainted, isHTMLElement, isInlineMark, recolorOpenText, styleInlineSpan, unwrapAnnSpans } from './inlineMark'
 
+function clearAppFont(el: HTMLElement | null | undefined) {
+  if (!el) return
+  const inline = el.style.getPropertyValue('font-family')
+  if (inline && isAppFontFamily(inline)) el.style.removeProperty('font-family')
+}
+
 function applyInlineType(doc: Document, settings: DisplaySettings) {
   const html = doc.documentElement
   const body = doc.body
   const reasily = settings.formatting === 'reasily'
-  if (!reasily && usesPublisherFont(settings.fontFamily)) {
-    html.style.removeProperty('font-family')
-    body?.style.removeProperty('font-family')
-    if (settings.fontSize === DEFAULT_DISPLAY.fontSize) {
-      html.style.removeProperty('font-size')
-    } else {
-      html.style.fontSize = `${(settings.fontSize / DEFAULT_DISPLAY.fontSize) * 100}%`
+  if (usesPublisherFont(settings.fontFamily)) {
+    clearAppFont(html)
+    clearAppFont(body)
+    if (!reasily) {
+      if (settings.fontSize === DEFAULT_DISPLAY.fontSize) {
+        html.style.removeProperty('font-size')
+      } else {
+        html.style.fontSize = `${(settings.fontSize / DEFAULT_DISPLAY.fontSize) * 100}%`
+      }
     }
     return
   }
   html.style.setProperty('font-size', `${settings.fontSize}px`, 'important')
-  if (reasily && usesPublisherFont(settings.fontFamily)) {
-    html.style.removeProperty('font-family')
-    body?.style.removeProperty('font-family')
-    return
-  }
   html.style.setProperty('font-family', settings.fontFamily, 'important')
   body?.style.setProperty('font-family', settings.fontFamily, 'important')
 }
@@ -342,7 +346,9 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     if (!view?.renderer) return
     const next = { ...settingsRef.current, fontSize: size }
     settingsRef.current = next
-    view.renderer.setStyles?.(buildReaderCSS(next))
+    void ensureReadingFont(next.fontFamily).then(() => {
+      view.renderer.setStyles?.(readerStyleSheets(next))
+    })
     for (const part of view.renderer.getContents()) {
       if (!part.doc) continue
       paintReaderDocument(part.doc, next)
@@ -1137,10 +1143,12 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       const view = viewRef.current
       if (!view?.renderer) return
       applyRendererLayout(view.renderer, next)
-      view.renderer.setStyles?.(buildReaderCSS(next))
-      for (const part of view.renderer.getContents()) {
-        if (part.doc) paintReaderDocument(part.doc, next)
-      }
+      void ensureReadingFont(next.fontFamily).then(() => {
+        view.renderer.setStyles?.(readerStyleSheets(next))
+        for (const part of view.renderer.getContents()) {
+          if (part.doc) paintReaderDocument(part.doc, next)
+        }
+      })
     },
     relayout: () => {
       const renderer = viewRef.current?.renderer as { render?: () => void } | undefined
@@ -1558,7 +1566,8 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
           detail.data = Promise.resolve(detail.data).catch(() => '')
         })
         applyRendererLayout(view.renderer, settingsRef.current)
-        view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
+        await ensureReadingFont(settingsRef.current.fontFamily)
+        view.renderer.setStyles?.(readerStyleSheets(settingsRef.current))
         try {
           await view.init({ lastLocation: lastLocation || undefined, showTextStart: !lastLocation })
         } catch (err) {
@@ -1623,11 +1632,15 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const view = viewRef.current
     if (!view?.renderer || pinchRef.current.active) return
     applyRendererLayout(view.renderer, settingsRef.current)
-    view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
-    for (const part of view.renderer.getContents()) {
-      if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
-    }
-    repaintStoredMarks(true)
+    void ensureReadingFont(settingsRef.current.fontFamily).then(() => {
+      const renderer = viewRef.current?.renderer
+      if (!renderer) return
+      renderer.setStyles?.(readerStyleSheets(settingsRef.current))
+      for (const part of renderer.getContents()) {
+        if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
+      }
+      repaintStoredMarks(true)
+    })
   }, [settingsKey])
 
   useEffect(() => {

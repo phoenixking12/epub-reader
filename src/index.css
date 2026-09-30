@@ -345,6 +345,11 @@ select option { background: #1c1917; color: #fafaf9; }
   top: max(var(--chrome-h), calc(48px + var(--lg-sat)));
   bottom: calc(56px + var(--lg-sab));
 }
+.foliate-host,
+.foliate-host foliate-view,
+.foliate-host iframe {
+  font-family: initial;
+}
 .foliate-host foliate-view {
   display: block;
   width: 100%;

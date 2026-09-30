@@ -362,6 +362,17 @@ export function buildReaderCSS(settings: DisplaySettings): string {
   `
 }
 
+/**
+ * Book default must not inherit the app UI face. The reset is the first sheet
+ * in the chapter, so a font the book sets later still wins. Source Serif is
+ * not loaded unless that face is chosen.
+ */
+export function readerStyleSheets(settings: DisplaySettings): string | [string, string] {
+  const css = buildReaderCSS(settings)
+  if (!usesPublisherFont(settings.fontFamily)) return css
+  return ['html, body { font-family: initial; }', css]
+}
+
 export function applyRendererLayout(
   renderer: HTMLElement | undefined,
   settings: DisplaySettings,
