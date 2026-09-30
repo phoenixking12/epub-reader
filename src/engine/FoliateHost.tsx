@@ -1562,8 +1562,14 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         installCfiIgnore(view)
         const book = view.book
         book.transformTarget?.addEventListener('data', (ev) => {
-          const detail = (ev as CustomEvent).detail as { data: Promise<unknown>; name?: string }
-          detail.data = Promise.resolve(detail.data).catch(() => '')
+          const detail = (ev as CustomEvent).detail as { data: unknown; type?: string; name?: string }
+          const original = detail.data
+          const type = String(detail.type || '')
+          detail.data = Promise.resolve(original).catch((err) => {
+            console.warn('LoreGuard could not open a book resource', detail.name, err)
+            if (type.includes('css') && typeof original === 'string') return original
+            return ''
+          })
         })
         applyRendererLayout(view.renderer, settingsRef.current)
         await ensureReadingFont(settingsRef.current.fontFamily)
