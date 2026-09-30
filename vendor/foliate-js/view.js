@@ -34,11 +34,18 @@ const makeZipLoader = async file => {
     const reader = new ZipReader(new BlobReader(file))
     const entries = await reader.getEntries()
     const map = new Map(entries.map(entry => [entry.filename, entry]))
-    const load = f => (name, ...args) =>
-        map.has(name) ? f(map.get(name), ...args) : null
+    const lower = new Map(entries.map(entry => [entry.filename.toLowerCase(), entry]))
+    const find = name => {
+        const key = String(name ?? '')
+        return map.get(key) || lower.get(key.toLowerCase()) || null
+    }
+    const load = f => (name, ...args) => {
+        const entry = find(name)
+        return entry ? f(entry, ...args) : null
+    }
     const loadText = load(entry => entry.getData(new TextWriter()))
     const loadBlob = load((entry, type) => entry.getData(new BlobWriter(type)))
-    const getSize = name => map.get(name)?.uncompressedSize ?? 0
+    const getSize = name => find(name)?.uncompressedSize ?? 0
     return { entries, loadText, loadBlob, getSize }
 }
 

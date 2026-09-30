@@ -92,6 +92,18 @@ const childGetter = (doc, ns) => {
     }
 }
 
+const bytesToBase64 = bytes => {
+    let binary = ''
+    const chunk = 0x8000
+    for (let i = 0; i < bytes.length; i += chunk)
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk))
+    return btoa(binary)
+}
+
+const isFontResource = (href, type) => /\.(otf|ttf|woff2?|eot)$/i.test(href || '')
+    || /^font\//i.test(type || '')
+    || /font-woff|font-sfnt|ms-fontobject/i.test(type || '')
+
 const resolveURL = (url, relativeTo) => {
     try {
         if (relativeTo.includes(':')) return new URL(url, relativeTo)
@@ -724,6 +736,16 @@ class Loader {
         this.eventTarget.dispatchEvent(event)
         const newData = await event.detail.data
         const newType = await event.detail.type
+        // Android WebView drops @font-face files served from blob: URLs, so every
+        // face in the book falls back to one system font. data: URLs still load.
+        if (isFontResource(href, newType)) {
+            const blob = newData instanceof Blob
+                ? newData
+                : new Blob([newData], { type: newType || 'application/octet-stream' })
+            const bytes = new Uint8Array(await blob.arrayBuffer())
+            const mime = blob.type || newType || 'application/octet-stream'
+            return `data:${mime};base64,${bytesToBase64(bytes)}`
+        }
         const url = URL.createObjectURL(new Blob([newData], { type: newType }))
         this.#cache.set(href, url)
         this.#refCount.set(href, 1)
@@ -863,7 +885,33 @@ class Loader {
             // replace hrefs (excluding anchors)
             const replace = async (el, attr) => el.setAttribute(attr,
                 await this.loadHref(el.getAttribute(attr), href, parents))
-            for (const el of doc.querySelectorAll('link[href]')) await replace(el, 'href')
+            const ns = doc.documentElement?.namespaceURI
+            for (const el of doc.querySelectorAll('link[href]')) {
+                const rel = (el.getAttribute('rel') || '').toLowerCase()
+                const type = (el.getAttribute('type') || '').toLowerCase()
+                const isStyle = rel.split(/\s+/).includes('stylesheet') || type === 'text/css'
+                if (!isStyle) {
+                    await replace(el, 'href')
+                    continue
+                }
+                const raw = String(el.getAttribute('href') || '').split('#')[0].split('?')[0].trim()
+                const path = raw ? resolveURL(raw, href) : ''
+                let cssText = ''
+                try {
+                    cssText = path ? await this.loadText(path) : ''
+                } catch (e) {
+                    console.warn(e)
+                }
+                if (!cssText) {
+                    await replace(el, 'href')
+                    continue
+                }
+                const replaced = await this.replaceCSS(cssText, path, parents.concat(href))
+                const style = ns ? doc.createElementNS(ns, 'style') : doc.createElement('style')
+                style.setAttribute('type', 'text/css')
+                style.textContent = replaced
+                el.replaceWith(style)
+            }
             for (const el of doc.querySelectorAll('[src]')) await replace(el, 'src')
             for (const el of doc.querySelectorAll('[poster]')) await replace(el, 'poster')
             for (const el of doc.querySelectorAll('object[data]')) await replace(el, 'data')
