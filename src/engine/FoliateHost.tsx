@@ -8,7 +8,7 @@ import { View } from 'foliate-js/view.js'
 import { Overlayer } from 'foliate-js/overlayer.js'
 import { FootnoteHandler } from 'foliate-js/footnotes.js'
 import type { AnnotationRecord, BookmarkRecord, DisplaySettings } from '../types/models'
-import { applyRendererLayout, readerStyleSheets, themeColors } from './css'
+import { applyRendererLayout, buildReaderCSS, themeColors } from './css'
 import { ensureReadingFont } from './fonts'
 import { applyReasilyDocument } from './reasily'
 import { shouldHorizontalTurn, turnDirection } from './pageTurn'
@@ -347,7 +347,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     const next = { ...settingsRef.current, fontSize: size }
     settingsRef.current = next
     void ensureReadingFont(next.fontFamily).then(() => {
-      view.renderer.setStyles?.(readerStyleSheets(next))
+      view.renderer.setStyles?.(buildReaderCSS(next))
     })
     for (const part of view.renderer.getContents()) {
       if (!part.doc) continue
@@ -1144,7 +1144,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
       if (!view?.renderer) return
       applyRendererLayout(view.renderer, next)
       void ensureReadingFont(next.fontFamily).then(() => {
-        view.renderer.setStyles?.(readerStyleSheets(next))
+        view.renderer.setStyles?.(buildReaderCSS(next))
         for (const part of view.renderer.getContents()) {
           if (part.doc) paintReaderDocument(part.doc, next)
         }
@@ -1567,7 +1567,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
         })
         applyRendererLayout(view.renderer, settingsRef.current)
         await ensureReadingFont(settingsRef.current.fontFamily)
-        view.renderer.setStyles?.(readerStyleSheets(settingsRef.current))
+        view.renderer.setStyles?.(buildReaderCSS(settingsRef.current))
         try {
           await view.init({ lastLocation: lastLocation || undefined, showTextStart: !lastLocation })
         } catch (err) {
@@ -1635,7 +1635,7 @@ export const FoliateHost = forwardRef<FoliateHandle, Props>(function FoliateHost
     void ensureReadingFont(settingsRef.current.fontFamily).then(() => {
       const renderer = viewRef.current?.renderer
       if (!renderer) return
-      renderer.setStyles?.(readerStyleSheets(settingsRef.current))
+      renderer.setStyles?.(buildReaderCSS(settingsRef.current))
       for (const part of renderer.getContents()) {
         if (part.doc) paintReaderDocument(part.doc, settingsRef.current)
       }
