@@ -56,6 +56,8 @@ describe('buildReaderCSS', () => {
   it('does not override the book typeface or sizes when Book default is selected', () => {
     expect(css).not.toMatch(/font-family: publisher/)
     expect(css).not.toMatch(/font-family: "Source Serif 4"/)
+    expect(css).not.toMatch(/font-family:\s*initial/)
+    expect(css).not.toMatch(/Source Serif/)
     expect(css).not.toMatch(/h1 \{ font-size: 1\.85em/)
     expect(css).not.toMatch(/JetBrains Mono/)
     expect(css).not.toMatch(/Latin Modern Math/)

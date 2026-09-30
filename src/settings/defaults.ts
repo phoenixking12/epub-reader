@@ -89,6 +89,20 @@ export function usesPublisherFont(family?: string | null): boolean {
   return !family || family === 'publisher'
 }
 
+/** A typeface this app ships. Book default must not treat these as the book's face. */
+export function isAppFontFamily(family?: string | null): boolean {
+  if (!family) return false
+  const bare = family.replace(/["']/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+  return (
+    bare.includes('source serif') ||
+    bare.includes('literata') ||
+    bare.includes('newsreader') ||
+    bare.includes('source sans') ||
+    bare.includes('ibm plex') ||
+    bare.includes('jetbrains')
+  )
+}
+
 export function flowForPageTurn(mode: PageTurnMode): DisplaySettings['flow'] {
   return mode === 'scroll' ? 'scrolled' : 'paginated'
 }
@@ -119,11 +133,11 @@ export function migrateDisplay(display?: Partial<DisplaySettings> | null): Displ
   const maxInlineSize =
     display?.maxInlineSize == null || display.maxInlineSize === 720 ? 1200 : merged.maxInlineSize
   const savedFamily = display?.fontFamily
-  const keepCustomFont =
-    Boolean(savedFamily) &&
-    savedFamily !== 'publisher' &&
-    savedFamily !== '"Source Serif 4", Georgia, serif'
-  const fontFamily = keepCustomFont && savedFamily ? savedFamily : 'publisher'
+  const legacyAppFace =
+    !savedFamily ||
+    savedFamily === 'publisher' ||
+    savedFamily.replace(/["']/g, '').toLowerCase().includes('source serif')
+  const fontFamily = legacyAppFace ? 'publisher' : savedFamily
   return {
     ...merged,
     margin,

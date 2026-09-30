@@ -2,6 +2,14 @@
 
 All notable changes to LoreGuard are recorded here. Version numbers follow [SemVer](https://semver.org/).
 
+## 5.0.3 — 2026-09-30
+
+Same Android id as 4.0.0. This APK replaces 5.0.2 and keeps the library.
+
+### Fixed
+
+- Book default uses the type settings in the book file. LoreGuard does not load Source Serif for that choice, and it does not substitute the browser’s default face.
+
 ## 5.0.2 — 2026-09-29
 
 Same Android id as 4.0.0. This APK replaces 5.0.1 and keeps the library.
